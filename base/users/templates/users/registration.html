@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block styles %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/registration.css' %}" />
+{% endblock %}
+
+{% block content %}
+  <div class="register__page">
+    <div class="registration-container">
+      <a href="/" class="back-button"><img src="{% static './images/arrow_back.svg' %}" alt="arrow_back"> Вернуться на главную</a>
+      <div class="registration-form">
+        <h2>Создайте аккаунт</h2>
+        <p class="form-description">Присоединяйтесь к нашему сообществу и получите доступ к эксклюзивным курсам</p>
+        <form method="post">
+          {% csrf_token %}
+          <div class="form-group">
+            <label for="id_username">Логин:</label>
+            <input type="text" name="username" maxlength="150" autofocus required id="id_username" placeholder="НеПростоДжон123" />
+          </div>
+          <div class="form-group">
+            <label for="id_email">Email:</label>
+            <input type="email" name="email" maxlength="320" required id="id_email" placeholder="гений@learnify.com" />
+          </div>
+          <div class="form-row">
+            <div class="form-group half-width">
+              <label for="id_first_name">Имя:</label>
+              <input type="text" name="first_name" maxlength="30" required id="id_first_name" placeholder="Будущий Гуру" />
+            </div>
+            <div class="form-group half-width">
+              <label for="id_last_name">Фамилия:</label>
+              <input type="text" name="last_name" maxlength="30" required id="id_last_name" placeholder="Кодомагии" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="id_password1">Пароль:</label>
+            <input type="password" name="password1" autocomplete="new-password" required id="id_password1" placeholder="Сложнее, чем 'password123'" />
+          </div>
+          <div class="form-group">
+            <label for="id_password2">Подтверждение пароля:</label>
+            <input type="password" name="password2" autocomplete="new-password" required id="id_password2" placeholder="Повторите свой шедевр" />
+          </div>
+          <button type="submit" class="btn register-btn">Стать легендой Learnify</button>
+        </form>
+        <p class="login-link">
+          Уже гуру? <a href="{% url 'users:login' %}">Войти</a>
+        </p>
+      </div>
+    </div>
+  </div>
+{% endblock %}

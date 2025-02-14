@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block styles %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/courses.css' %}" />
+{% endblock %}
+
+{% block content %}
+  {% include '../includes/header.html' %}
+
+  <main>
+    <section class="courses-hero">
+      <div class="container">
+        <h1>Исследуйте наши курсы</h1>
+        <p>Найдите идеальный курс для развития ваших навыков</p>
+      </div>
+    </section>
+
+    <section class="courses-categories">
+      <div class="container">
+        <h2>Категории</h2>
+        <div class="category-grid">
+          <button id="all-categories" class="category-card active">Все категории</button>
+          {% for category in categorys %}
+            <div class="category-card">
+              <i class="fas fa-code"></i>
+              <h3>{{ category.name }}</h3>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="courses-filters">
+      <div class="container">
+        <div class="filters-wrapper">
+          <div class="search-box">
+            <input type="text" placeholder="Поиск курсов..." />
+            <button><i class="fas fa-search"><img src="{% static 'images/search.svg' %}" alt="" /></i></button>
+          </div>
+          <div class="filter-groups">
+            <div class="filter-group">
+              <label for="level-select">Уровень</label>
+              <select id="level-select">
+                <option value="beginner">Начинающий</option>
+                <option value="intermediate">Средний</option>
+                <option value="advanced">Продвинутый</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="price-select">Стоимость</label>
+              <select id="price-select">
+                <option value="paid">Платный</option>
+                <option value="free">Бесплатный</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="teacher-select">Преподователь</label>
+              <select id="teacher-select">
+                <option value="Белоусов">Белоусов</option>
+                <option value="Варгантов">Варгантов</option>
+                <option value="Воронов">Воронов</option>
+                <option value="Петров">Петров</option>
+                <option value="Харченко">Харченко</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="view-select">Показать курсы</label>
+              <select id="view-select">
+                <option value="all">Все курсы</option>
+                <option value="popular">Популярные</option>
+                <option value="new">Новые</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="sort-select">Сортировка</label>
+              <select id="sort-select">
+                <option value="all">По рейтингу</option>
+                <option value="price_asc">По цене (низкая - высокая)</option>
+                <option value="price_desc">По цене (высокая - низкая)</option>
+              </select>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button id="apply-filters">Применить</button>
+            <button id="reset-filters">Сбросить</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="courses-main">
+      <div class="container">
+        <h2 class="courses__main__title">
+          Все курсы
+        </h2>
+        <div class="courses-grid" id="courses-container"></div>
+        <div class="courses-pagination">
+          <button id="load-more">Загрузить еще</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  {% include '../includes/footer.html' %}
+
+  <script src="{% static 'js/mainPageBurgerMenu.js' %}"></script>
+  <script src="{% static 'js/pageCourses.js' %}"></script>
+  <script src="{% static 'js/courses.js' %}"></script>
+{% endblock %}

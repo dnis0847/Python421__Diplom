@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block styles %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/courses.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/course_detail.css' %}" />
+{% endblock %}
+
+{% block content %}
+  {% include '../includes/header.html' %}
+
+  <main>
+    <div class="bg-gray-100 min-h-screen">
+      <section class="course__header">
+        <div class="container">
+          <h1 class="course__title">{{ course.title }}</h1>
+          <div class="course__header__info">
+            <span class="text-sm text-gray-500 mr-4">Преподователь: {{ course.teacher.get_full_name }}</span>
+            <span class="text-sm text-gray-500 mr-4">Категория: {{ course.category }}</span>
+            <span class="text-sm text-gray-500">Уровень: {{ course.level }}</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="messages">
+        {% for message in messages %}
+          <div class="alert {% if message.tags %}
+              
+              
+              alert-{{ message.tags }}
+            {% endif %}"
+            role="alert">{{ message }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="container">
+        <div class="grid">
+          <div class="col-span-2">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+              <div class="flex justify-between items-center mb-4">
+                <div class="feedback flex items-center">
+                  <img src="{% static 'images/star.svg' %}" alt="" />
+                  <span class="text-lg font-semibold">4.8 (256 отзывов)</span>
+                </div>
+                <div class="text-gray-600">
+                  <i data-lucide="user" class="w-5 h-5 inline-block mr-1"></i>
+                  <span>1,234 студента</span>
+                </div>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-3xl font-bold text-indigo-600">{{ course.price }} ₽</span>
+                <button class="start__learning">Начать обучение</button>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+              <div class="course__tabs mb-4">
+                <button class="tab-button active mr-4 pb-2" data-tab="description">Описание курса</button>
+                <button class="tab-button mr-4 pb-2" data-tab="program">Программа курса</button>
+              </div>
+              <div id="description" class="tab-content active">
+                <p class="text-gray-700 mb-4">{{ course.description }}</p>
+                <h3 class="text-lg font-semibold mb-2">Чему вы научитесь:</h3>
+                <ul class="list-disc list-inside text-gray-700 mb-4">
+                  <li>Основам React и его экосистемы</li>
+                  <li>Созданию компонентов и управлению их жизненным циклом</li>
+                  <li>Работе с хуками и функциональными компонентами</li>
+                  <li>Управлению состоянием приложения с помощью Redux</li>
+                  <li>Маршрутизации в React-приложениях</li>
+                  <li>Оптимизации производительности React-приложений</li>
+                </ul>
+                <h3 class="text-lg font-semibold mb-2">Предварительные требования:</h3>
+                <p class="text-gray-700">Базовые знания HTML, CSS и JavaScript. Опыт работы с современными инструментами разработки (npm, Git) будет полезен, но не обязателен.</p>
+              </div>
+              <div id="program" class="tab-content hidden">
+                <h3 class="text-lg font-semibold mb-4">Программа курса:</h3>
+                <ol class="list-decimal list-inside text-gray-700">
+                  <li class="mb-2">Введение в React и его экосистему</li>
+                  <li class="mb-2">Компоненты и их жизненный цикл</li>
+                  <li class="mb-2">Работа с пропсами и состоянием</li>
+                  <li class="mb-2">Хуки в React</li>
+                  <li class="mb-2">Маршрутизация с React Router</li>
+                  <li class="mb-2">Управление состоянием с Redux</li>
+                  <li class="mb-2">Работа с формами в React</li>
+                  <li class="mb-2">Оптимизация производительности</li>
+                  <li class="mb-2">Тестирование React-приложений</li>
+                  <li class="mb-2">Развертывание React-приложений</li>
+                </ol>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+              <h2 class="text-2xl font-semibold mb-4">Отзывы студентов</h2>
+              <div class="mb-4">
+                <div class="feedback__header items-center mb-2">
+                  <span class="text-lg font-semibold ml-2 text-gray-600">Анна С.</span>
+                </div>
+                <p class="text-gray-700">Отличный курс! Очень подробно объясняется материал, много практических заданий. Преподаватель отвечает на все вопросы и помогает разобраться в сложных моментах.</p>
+              </div>
+              <div id="additional-reviews" class="hidden">
+                <div class="mb-4">
+                  <div class="feedback__header items-center mb-2">
+                    <span class="text-lg font-semibold ml-2 text-gray-600">Петр М.</span>
+                  </div>
+                  <p class="text-gray-700">Хороший курс для начинающих разработчиков. Есть некоторые моменты, которые можно было бы объяснить подробнее, но в целом я доволен результатом.</p>
+                </div>
+                <div class="mb-4">
+                  <div class="feedback__header items-center mb-2">
+                    <span class="text-lg font-semibold ml-2 text-gray-600">Елена К.</span>
+                  </div>
+                  <p class="text-gray-700">Прекрасный курс! Я давно хотела изучить React, и этот курс помог мне освоить его с нуля. Теперь я чувствую себя уверенно при работе с React-проектами.</p>
+                </div>
+              </div>
+              <button id="toggle-reviews" class="btn text-indigo-600 font-semibold flex items-center">Показать все отзывы <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i></button>
+            </div>
+          </div>
+
+          <div class="sidebar">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+              <h2 class="text-xl font-semibold mb-4">Об инструкторе</h2>
+              <div class="instructor items-center mb-4">
+                <img src="{{ course.teacher.profile.avatar.url }}" alt="Иван Петров" class="w-20 h-20 rounded-full mr-4" />
+                <div>
+                  <h3 class="text-lg font-semibold">{{ course.teacher.get_full_name }}</h3>
+                  {% comment %} <p class="text-gray-600">Senior React Developer</p> {% endcomment %}
+                </div>
+              </div>
+              <p class="text-gray-700 mb-4">{{ course.teacher.profile.bio }}</p>
+              <a href="#" class="text-indigo-600 font-semibold">Посмотреть все курсы автора</a>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6">
+              <h2 class="text-xl font-semibold mb-4">Детали курса</h2>
+              <ul class="course__details">
+                <li class="flex items-center text-gray-700">
+                  <img src="{% static 'images/time.svg' %}" alt="Продолжительность" />
+                  Продолжительность: 20 часов видео
+                </li>
+                <li class="flex items-center text-gray-700">
+                  <img src="{% static 'images/date.svg' %}" alt="Дата публикации" />
+                  Дата создания: 01.06.2023
+                </li>
+                <li class="flex items-center text-gray-700">
+                  <img src="{% static 'images/lang.svg' %}" alt="Язык курсов" />
+                  Язык: Русский
+                </li>
+                <li class="flex items-center text-gray-700">
+                  <img src="{% static 'images/sertificat.svg' %}" alt="Сертификат" />
+                  Сертификат по окончании
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  {% include './simulate_payments.html' %}
+  {% include '../includes/footer.html' %}
+  <script src="{% static 'js/mainPageBurgerMenu.js' %}"></script>
+  <script src="{% static 'js/courses_detail.js' %}"></script>
+  <script src="{% static 'js/simulator_payer.js' %}"></script>
+{% endblock %}

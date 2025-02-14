@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block styles %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+{% endblock %}
+
+{% block content %}
+  {% include '../includes/header.html' %}
+
+  <main>
+    <section class="hero">
+      <div class="container hero__content">
+        <div class="hero__info">
+          <h1 class="hero__title">{{ heroBlock.title }}</h1>
+          <div class="hero__description">{{ heroBlock.subtitle }}</div>
+          <a href="{% url 'courses:courses' %}">
+            <div class="btn hero__button">
+              <span>{{ heroBlock.btn_to_action }}</span>
+              <img src="{% static 'images/arrow.svg' %}" alt="" />
+            </div>
+          </a>
+        </div>
+        <div class="hero__image">
+          <img src="{{ heroBlock.hero_image.url }}" alt="" />
+        </div>
+      </div>
+    </section>
+
+    <section class="popular__courses">
+      <div class="container">
+        <h2 class="popular__courses__title">Популярные курсы</h2>
+        <div class="courses__grid">
+          {% for course in courses %}
+            <!-- Карточка курса -->
+            <div class="courses__card">
+              <div class="courses__card__image">
+                <img src="{{ course.image.url }}" alt="Курс" />
+                <div class="courses__card__category">{{ course.category }}</div>
+              </div>
+              <div class="courses__card__content">
+                <h3>{{ course.title }}</h3>
+                <p>{{ course.description }}</p>
+                <div class="courses__card__content__instructor">
+                  {% if course.teacher.profile.avatar %}
+                    <img src="{{ course.teacher.profile.avatar.url }}" alt="{{ course.teacher.get_full_name }}" />
+                  {% else %}
+                    <img src="{% static 'images/default_avatar.png' %}" alt="Default Avatar" />
+                  {% endif %}
+                  <span>{{ course.teacher.get_full_name }}</span>
+                </div>
+                <div class="courses__card__content__price__rating">
+                  <div class="courses__card__content__price">{{ course.price }} ₽</div>
+                  <div class="courses__card__content__rating">
+                    <img src="{% static 'images/rating.svg' %}" alt="rating" />
+                    <div>4.5</div>
+                  </div>
+                </div>
+                <div class="courses__card__content__studies__info">
+                  <div>
+                    <img src="{% static 'images/time.svg' %}" alt="time" />
+                    <span>6 недель</span>
+                  </div>
+                  <div>
+                    <img src="{% static 'images/peoples.svg' %}" alt="peoples" l />
+                    <span>1234 студента</span>
+                  </div>
+                  <div>
+                    <img src="{% static 'images/books.svg' %}" alt="books" />
+                    <span>24 урока</span>
+                  </div>
+                </div>
+              </div>
+              <a href="#">
+                <button>
+                  <span>Записаться на курс</span>
+                  <img src="{% static 'images/white_arrow.svg' %}" alt="Записаться на курс" />
+                </button>
+              </a>
+            </div>
+            <!-- Карточка курса конец -->
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="subscription__benefits">
+      <div class="container subscription__benefits__container">
+        <div class="our__cummunity">
+          <h2>{{ joinOurCommunity.title_block }}</h2>
+          <div class="our__cummunity_description">{{ joinOurCommunity.subtitle_block }}</div>
+          <div class="subscription__block">
+            <form method="post">
+              {% csrf_token %}
+              <input type="email" name="email" placeholder="Ваш email" />
+              <button type="submit">
+                <span>Подписаться</span>
+                <img src="{% static 'images/white_arrow.svg' %}" alt="" />
+              </button>
+            </form>
+          </div>
+        </div>
+        <div class="subscription__advantage">
+          <h3>Приемущества подписки</h3>
+          <div class="subscription__advantage__container">
+            <!-- Начало блока подписки -->
+            {% for benefit in subscriptionBenefit %}
+              <div class="subscription__advantage__block">
+                <div class="subscription__advantage__block__image">
+                  <img src="{{ benefit.benefit_svg.url }}" alt="{{ benefit.title_benefit }}" />
+                </div>
+                <div class="subscription__advantage__block__content">
+                  <div class="subscription__advantage__block__content__title">{{ benefit.title_benefit }}</div>
+                  <div class="subscription__advantage__block__content__descr">{{ benefit.description_benefit }}</div>
+                </div>
+              </div>
+            {% endfor %}
+            <!-- Конец блока подписки -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="asked__questions">
+      <div class="container">
+        <h2 class="popular__courses__title">Часто задаваемые вопросы</h2>
+        <div class="faq__container">
+          {% for faq in faqs %}
+            <div class="faq__item">
+              <div class="faq__question">
+                <h3>{{ faq.question }}</h3>
+                <span class="faq__toggle">+</span>
+              </div>
+              <div class="faq__answer">
+                <p>{{ faq.answer }}</p>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  </main>
+
+  {% include '../includes/footer.html' %}
+
+  <script src="{% static 'js/answer.js' %}"></script>
+  <script src="{% static 'js/mainPageBurgerMenu.js' %}"></script>
+{% endblock %}

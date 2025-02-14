@@ -1,0 +1,12 @@
+<!-- templates/courses/simulate_payment.html -->
+<div id="paymentModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <form class="payment-simulation-form" method="post" action="{% url 'simulate_payment' course.id %}">
+      {% csrf_token %}
+      <label><input type="radio" name="success" value="true" checked />Успешная оплата</label>
+      <label><input type="radio" name="success" value="false" />Неудачная оплата</label>
+      <button type="submit">Имитировать оплату</button>
+    </form>
+  </div>
+</div>

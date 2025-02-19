@@ -16,6 +16,12 @@ class SimulatePaymentView(LoginRequiredMixin, View):
         course_id = kwargs.get('course_id')
         course = get_object_or_404(Course, id=course_id)
 
+        # Проверяем, купил ли пользователь этот курс ранее
+        if Payment.objects.filter(user=request.user, course=course, status='success').exists():
+            messages.warning(
+                request, 'Вы уже приобрели этот курс. Для прохождения курса перейдите в личный кабинет.')
+            return HttpResponseRedirect(reverse_lazy('courses:course_detail', kwargs={'pk': course.id}))
+
         # Создаем запись о платеже
         payment = Payment.objects.create(
             user=request.user,
@@ -30,7 +36,8 @@ class SimulatePaymentView(LoginRequiredMixin, View):
         if success == 'true':
             payment.status = 'success'
             payment.save()
-            messages.success(request, 'Оплата успешно завершена! Для прохождения курса перейдите в личный кабинет.')
+            messages.success(
+                request, 'Оплата успешно завершена! Для прохождения курса перейдите в личный кабинет.')
         else:
             payment.status = 'failed'
             payment.save()
@@ -42,4 +49,3 @@ class SimulatePaymentView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         # Если GET-запрос, перенаправляем на список курсов
         return HttpResponseRedirect(reverse_lazy('courses:courses'))
-

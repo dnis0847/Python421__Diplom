@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'courses.apps.CoursesConfig',
     'payments.apps.PaymentsConfig',
+    'progress.apps.ProgressConfig'
 ]
 
 MIDDLEWARE = [

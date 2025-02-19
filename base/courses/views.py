@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.core.paginator import Paginator
 from django.views.generic import ListView, DetailView
 from .models import Course, Category
+import markdown
 
 class CoursesView(ListView):
     model = Course
@@ -71,3 +72,19 @@ def load_courses(request):
 class CourseDetailView(DetailView):
     model = Course
     template_name = 'courses/course_detail.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        course = self.object
+        
+        # Преобразование Markdown в HTML
+        if course.full_description:
+            html_content = markdown.markdown(course.full_description)
+        else:
+            html_content = None  # Если Markdown-текста нет
+        
+        context['title'] = f'Learnify | {course.title}' 
+        context['categorys'] = Category.objects.all()
+        context['lessons'] = course.lessons.all()
+        context['html_content'] = html_content
+        return context

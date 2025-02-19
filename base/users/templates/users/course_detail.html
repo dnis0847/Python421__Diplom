@@ -1,0 +1,84 @@
+{% extends 'base_dashboard.html' %}
+{% load static %}
+
+{% block styles %}
+  {{ block.super }}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/course-styles.css' %}" />
+{% endblock %}
+
+{% block content %}
+  <main class="main-content">
+    <header class="course-header">
+      <h1 class="course-title">{{ course.title }}</h1>
+      <div class="course-meta">
+        <span class="course-category"><i class="fas fa-folder"></i>{{ course.category }}</span>
+        <span class="course-level">
+          <i class="fas fa-signal"></i>
+          {% if course.level == 'beginner' %}
+            Начальный
+          {% elif course.level == 'intermediate' %}
+            Средний
+          {% elif course.level == 'advanced' %}
+            Продвинутый
+          {% endif %}
+        </span>
+        <span class="course-instructor"><i class="fas fa-user"></i> <a href="#">{{ course.teacher.get_full_name }}</a></span>
+      </div>
+      <div class="course-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 50%;"></div>
+        </div>
+        <span class="progress-text">50% завершено</span>
+      </div>
+      <button class="btn primary-btn">Продолжить обучение</button>
+    </header>
+
+    <section class="course-description">
+      <h2>Описание курса</h2>
+      <p>{{ course.description }}</p>
+    </section>
+
+    <section class="course-program">
+      <h2>Программа курса</h2>
+      <ul class="lessons-list">
+        {% if not lessons %}
+          <p>Уроков еще нет.</p>
+        {% else %}
+          {% for lesson in lessons %}
+            <li class="lesson completed">
+              <a href="{% url 'users:lesson_detail' pk=lesson.pk %}">
+                <span class="lesson-number">{{ lesson.order }}.</span>
+                <span class="lesson-title">{{ lesson.title }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        {% endif %}
+      </ul>
+    </section>
+    
+
+    <section class="course-progress-stats">
+      <h2>Ваш прогресс</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>Завершено уроков</h3>
+          <p class="stat-value">2 из 5</p>
+        </div>
+        <div class="stat-card">
+          <h3>Средний балл</h3>
+          <p class="stat-value">85%</p>
+        </div>
+        <div class="stat-card">
+          <h3>Время обучения</h3>
+          <p class="stat-value">4ч 30мин</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="{% static './js/dashboard.js' %}"></script>
+{% endblock %}

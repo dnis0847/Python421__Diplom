@@ -1,0 +1,111 @@
+{% extends 'base_dashboard.html' %}
+{% load static %}
+
+{% block styles %}
+  {{ block.super }}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/lesson_styles.css' %}" />
+  <style>{{ css_styles|safe }}</style>
+{% endblock %}
+
+{% block content %}
+  <main class="main-content">
+    <header class="lesson-header">
+      <h1 class="lesson-title">{{ lesson.title }}</h1>
+      <div class="lesson-meta">
+        <span class="lesson-number">Урок 1 из 10</span>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 10%;"></div>
+        </div>
+      </div>
+      <a href="#" class="btn secondary-btn"><i class="fas fa-arrow-left"></i> Вернуться к списку уроков</a>
+    </header>
+
+    <section class="lesson-content">
+      <div class="text-content">
+        {% if not html_content %}
+          Данный урок еще не загружен, попробуйте зайти позже.
+        {% else %}
+          {{ html_content|safe }}
+        {% endif %}
+      </div>
+
+      <div class="video-container">
+        {% if lesson.video_url is None %}
+          В этом уроке видео нет.
+        {% else %}
+          <iframe width="100%" height="300" src="{{ lesson.video_url }}" frameBorder="0" allow="clipboard-write; autoplay" webkitAllowFullScreen mozallowfullscreen allowFullScreen></iframe>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if tests %}
+      <section class="lesson-quiz">
+        <h2>Тест по материалам урока</h2>
+        {% for test in tests %}
+          <form id="quiz-form" method="POST" action="/users/lesson/api/{{ lesson.id }}/" data-lesson-id="{{ lesson.id }}">
+            {% csrf_token %}
+            <input type="hidden" name="test_id" value="{{ test.id }}" />
+            {% for question in test.questions %}
+              <div class="quiz-question">
+                <p>{{ question.text }}</p>
+                {% for answer in question.answers %}
+                  <label>
+                    <input type="radio" name="question_{{ question.id }}" value="{{ answer.id }}" />
+                    {{ answer.text }}
+                  </label>
+                {% endfor %}
+              </div>
+            {% endfor %}
+            <button type="submit" class="btn primary-btn">Проверить ответы</button>
+          </form>
+        {% endfor %}
+        <div id="quiz-result" style="display: none;">
+          <h3>Результат теста:</h3>
+          <p id="result-score"></p>
+        </div>
+      </section>
+    {% else %}
+    <section class="lesson-quiz">
+      <p>Тесты для этого урока отсутствуют.</p>
+    </section>
+    {% endif %}
+
+    <section class="lesson-navigation">
+      <button class="btn secondary-btn" disabled><i class="fas fa-chevron-left"></i> Предыдущий урок</button>
+      <button class="btn primary-btn">Следующий урок <i class="fas fa-chevron-right"></i></button>
+    </section>
+
+    <section class="lesson-info">
+      <h3>Информация об уроке</h3>
+      <ul>
+        <li>
+          <i class="fas fa-clock"></i> Продолжительность: 30 минут
+        </li>
+        <li>
+          <i class="fas fa-tasks"></i> Сложность: Начальный уровень
+        </li>
+      </ul>
+    </section>
+
+    <section class="additional-materials">
+      <h3>Дополнительные материалы</h3>
+      <ul>
+        <li>
+          <a href="#"><i class="fas fa-file-pdf"></i> HTML5 Cheat Sheet</a>
+        </li>
+        <li>
+          <a href="#"><i class="fas fa-external-link-alt"></i> MDN Web Docs: HTML Basics</a>
+        </li>
+      </ul>
+    </section>
+
+    <button id="mark-lesson-complete" class="btn secondary-btn" data-lesson-id="{{ lesson.id }}"><i class="fas fa-check"></i> Отметить урок как завершенный</button>
+  </main>
+  <script src="{% static 'js/dashboard.js' %}"></script>
+  <script src="{% static 'js/testAnswer.js' %}"></script>
+{% endblock %}

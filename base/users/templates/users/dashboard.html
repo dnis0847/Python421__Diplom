@@ -1,0 +1,112 @@
+{% extends 'base_dashboard.html' %}
+{% load static %}
+
+{% block styles %}
+  {{ block.super }}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+{% endblock %}
+
+{% block content %}
+  <main class="main-content">
+    <header class="main-header">
+      <div class="header-search">
+        <input type="text" placeholder="Поиск курсов..." />
+        <button><i class="fas fa-search"></i></button>
+      </div>
+      <div class="user-panel">
+        <button class="icon-btn"><i class="fas fa-bell"></i></button>
+        <button class="icon-btn"><i class="fas fa-moon"></i></button>
+        <div class="user-info">
+          {% if not user_profile.avatar or not user_profile.avatar.name %}
+            <img class="user-avatar" src="{% static './images/placeholder.svg' %}" alt="аватарка" />
+          {% else %}
+            <img class="user-avatar" src="{{ user_profile.avatar.url }}" alt="аватарка" />
+          {% endif %}
+          <span class="user-name">{{ user_profile.user.get_full_name|default:user_profile.user.username }}</span>
+          <span class="user-role">
+            {% if user_profile.role == 'student' %}
+              Студент
+            {% elif user_profile.role == 'teacher' %}
+              Преподаватель
+            {% elif user_profile.role == 'admin' %}
+              Администратор
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </header>
+    <div class="content-area">
+      <section class="welcome-section">
+        <h1>Добро пожаловать, {{ user_profile.user.first_name|default:user_profile.user.username }}!</h1>
+        <p>Продолжайте обучение и достигайте новых высот.</p>
+      </section>
+      <section class="dashboard-stats">
+        <div class="stat-card">
+          <i class="fas fa-book-open"></i>
+          <div class="stat-info">
+            <h3>{{ active_courses_count }}</h3>
+            <p>Активных курсов</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <i class="fas fa-certificate"></i>
+          <div class="stat-info">
+            <h3>{{ completed_courses_count }}</h3>
+            <p>Завершенных курса</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <i class="fas fa-clock"></i>
+          <div class="stat-info">
+            <h3>{{total_training_time}}ч</h3>
+            <p>Времени обучения</p>
+          </div>
+        </div>
+      </section>
+      <section class="courses-section">
+        <h2>Мои курсы</h2>
+        <div class="courses-grid">
+          {% if courses_info %}
+            {% for course in courses_info %}
+              <div class="course-card">
+                {% if course.image %}
+                  <div class="course-image" style="background-image: url('{{ course.image.url }}');"></div>
+                {% else %}
+                  <p>Изображение отсутствует</p>
+                {% endif %}
+                <div class="course-content">
+                  <h3>{{ course.title }}</h3>
+                  <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 8 недель</span>
+                    <span><i class="fas fa-user"></i> {{ course.teacher }} </span>
+                  </div>
+                  <div class="course-progress">
+                    <div class="progress-bar">
+                      <div class="progress-fill" style="width: {{ course.progress.progress_percentage }}%;"></div>
+                    </div>
+                    <span class="progress-text">{{ course.progress.progress_percentage }}% завершено</span>
+                  </div>
+                  <a href="{% url 'users:course_detail' pk=course.id %}">
+                    <button class="btn primary-btn">Продолжить</button>
+                  </a>
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </section>
+      <section class="progress-section">
+        <h2>Прогресс обучения</h2>
+        <div class="progress-chart">
+          <!-- Здесь будет график прогресса (требуется JavaScript) -->
+          <p>График прогресса обучения будет отображен здесь.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script src="{% static './js/dashboard.js' %}"></script>
+{% endblock %}

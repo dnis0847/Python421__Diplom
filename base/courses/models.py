@@ -40,6 +40,11 @@ class Course(models.Model):
     description = models.TextField(
         verbose_name="Описание курса"
     )
+    full_description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Полное описание (Markdown)"
+    )
     teacher = models.ForeignKey(
         User,
         on_delete=models.CASCADE,

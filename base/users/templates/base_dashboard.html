@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title }}</title>
+
+    {% block styles %}
+
+    {% endblock %}
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <h2>Learnify</h2>
+          <button class="mobile-menu-toggle" id="mobileMenuToggle"><i class="fas fa-bars"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+          <ul>
+            <li>
+              <a href="{% url "users:dashboard" %}" class="active"><i class="fas fa-home"></i><span>Dashboard</span></a>
+            </li>
+            <li>
+              <a href="{% url "courses:courses" %}"><i class="fas fa-book"></i><span>Все курсы</span></a>
+            </li>
+            <li>
+              <a href="#"><i class="fas fa-chart-line"></i><span>Прогресс</span></a>
+            </li>
+            <li>
+              <a href="#"><i class="fas fa-calendar"></i><span>Расписание</span></a>
+            </li>
+            <li>
+              <a href="#"><i class="fas fa-comment"></i><span>Сообщения</span></a>
+            </li>
+            <li>
+              <a href="#"><i class="fas fa-cog"></i><span>Настройки</span></a>
+            </li>
+          </ul>
+        </nav>
+        <div class="sidebar-footer">
+          <a href="{% url 'users:logout' %}" class="logout-btn"><i class="fas fa-sign-out-alt"></i><span>Выйти</span></a>
+        </div>
+      </aside>
+      {% block content %}
+
+      {% endblock %}
+    </div>
+  </body>
+</html>

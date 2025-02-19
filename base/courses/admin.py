@@ -45,7 +45,7 @@ class CourseAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at')  # Только для чтения
     fieldsets = (
         ("Основная информация", {
-            'fields': ('title', 'description', 'teacher', 'category', 'price', 'level', 'is_published')
+            'fields': ('title', 'description', 'full_description', 'teacher', 'category', 'price', 'level', 'is_published')
         }),
         ("Изображение", {
             'fields': ('image',)

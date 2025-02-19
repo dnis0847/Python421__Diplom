@@ -18,7 +18,7 @@
 
     <div class="user_nav">
       {% if user.is_authenticated %}
-        <a href="{% url 'users:login' %}"><button class="btn login">{{ user.username }}</button></a>
+        <a href="{% url 'users:dashboard' %}"><button class="btn login">{{ user.username }}</button></a>
         <a href="{% url 'users:logout' %}"><button class="btn logout">Выйти</button></a>
       {% else %}
         <a href="{% url 'users:login' %}"><button class="btn login">Войти</button></a>

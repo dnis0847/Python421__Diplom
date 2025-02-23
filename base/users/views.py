@@ -1,6 +1,6 @@
-# Стандартные библиотеки Python
-# from typing import Optional
-from django.urls import reverse_lazy
+from django.core.serializers.json import DjangoJSONEncoder
+from django.shortcuts import render
+from django.urls import reverse_lazy, reverse
 from django.views.generic import TemplateView, DetailView, FormView
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.views import LoginView
@@ -11,8 +11,10 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from django.db.models import Prefetch
 from django.core.cache import cache
+from django.core.serializers.json import DjangoJSONEncoder
 from django.http import JsonResponse
 import markdown
+import json
 from pygments.formatters import HtmlFormatter
 from django.utils import timezone
 
@@ -23,6 +25,7 @@ from payments.models import Payment
 from progress.models import Progress
 from users.models import Profile
 from .services import get_user_courses_with_progress
+from django.conf import settings
 
 
 class RegisterView(FormView):
@@ -84,14 +87,27 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         user = self.request.user
         profile = get_object_or_404(Profile, user=user)
 
-        # Общая информация
+        # Получаем данные о курсах
+        courses_data = get_user_courses_with_progress(user)
+
+        # Преобразуем данные для JSON-сериализации
+        courses_info = [
+            {
+                'title': course.get('title', 'Без названия'),
+                'price': float(course.get('price', 0)) if 'price' in course else None,
+                'progress_percentage': float(course.get('progress', {}).get('progress_percentage', 0)),
+            }
+            for course in courses_data.get('courses_info', [])
+        ]
+
+        # Используем DjangoJSONEncoder для сериализации
+        context['courses_info_json'] = json.dumps(
+            courses_info, cls=DjangoJSONEncoder)
+
+        # Добавляем остальные данные в контекст
         context['title'] = 'Learnify | Dashboard'
         context['user_profile'] = profile
-
-        # Получаем данные через сервис
-        courses_data = get_user_courses_with_progress(user)
         context.update(courses_data)
-
         return context
 
 
@@ -163,15 +179,30 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
         # Проверяем прогресс пользователя по курсу
         try:
             progress = Progress.objects.get(user=user, course=course)
-            completed_lessons = progress.completed_lessons
+            completed_lessons = progress.completed_lessons.all()  # Завершенные уроки
+            completed_lessons_count = completed_lessons.count()  # Количество завершенных уроков
         except Progress.DoesNotExist:
             completed_lessons = []
+            completed_lessons_count = 0
+
+        # Общее количество уроков в курсе
+        total_lessons_count = course.lessons.count()
+
+        # Вычисляем процент выполнения курса
+        if total_lessons_count > 0:
+            progress_percentage = (
+                completed_lessons_count / total_lessons_count) * 100
+        else:
+            progress_percentage = 0
 
         # Добавляем данные в контекст
         context.update({
             'title': f'Learnify | {course.title}',
             'lessons': lessons,
+            'lessons_count': lessons.count(),
             'completed_lessons': completed_lessons,
+            'completed_lessons_count': completed_lessons_count,
+            'progress_percentage': round(progress_percentage),
         })
         return context
 
@@ -229,6 +260,48 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         lesson = self.get_object()
+        user = self.request.user
+
+        # Получаем курс, к которому относится урок
+        course = lesson.course
+
+        # Получаем все уроки курса, отсортированные по порядку
+        lessons = course.lessons.order_by('order')
+        total_lessons = lessons.count()
+        progress = None
+
+        # Находим порядковый номер текущего урока
+        current_lesson_index = list(lessons).index(lesson) + 1
+
+        # Вычисляем процент прохождения уроков
+        try:
+            progress = Progress.objects.get(user=user, course=course)
+            completed_lessons_count = progress.completed_lessons.count()
+            progress_percentage = (
+                completed_lessons_count / total_lessons) * 100 if total_lessons > 0 else 0
+        except Progress.DoesNotExist:
+            completed_lessons_count = 0
+            progress_percentage = 0
+
+        # Проверяем, завершен ли текущий урок
+        is_current_lesson_completed = False
+        if hasattr(progress, 'completed_lessons'):
+            is_current_lesson_completed = progress.completed_lessons.filter(
+                id=lesson.id).exists()
+
+        # Находим предыдущий и следующий уроки
+        previous_lesson = lessons[current_lesson_index -
+                                  2] if current_lesson_index > 1 else None
+        next_lesson = lessons[current_lesson_index] if current_lesson_index < total_lessons else None
+
+        # Ссылки на предыдущий и следующий уроки
+        previous_lesson_url = reverse('users:lesson_detail', kwargs={
+                                      'pk': previous_lesson.pk}) if previous_lesson else None
+        next_lesson_url = reverse('users:lesson_detail', kwargs={
+                                  'pk': next_lesson.pk}) if next_lesson else None
+
+        # Ссылка на текущий курс
+        course_url = reverse('users:course_detail', kwargs={'pk': course.pk})
 
         # Преобразование Markdown в HTML с подсветкой синтаксиса
         if lesson.content:
@@ -273,6 +346,14 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
             'html_content': html_content,
             'css_styles': css_styles,  # Стили Pygments
             'tests': test_data,  # Добавляем тесты в контекст
+            'current_lesson_index': current_lesson_index,  # Порядковый номер текущего урока
+            'total_lessons': total_lessons,  # Общее количество уроков
+            # Процент прохождения уроков
+            'progress_percentage': round(progress_percentage),
+            'course_url': course_url,  # Ссылка на текущий курс
+            'previous_lesson_url': previous_lesson_url,  # Ссылка на предыдущий урок
+            'next_lesson_url': next_lesson_url,  # Ссылка на следующий урок
+            'is_current_lesson_completed': is_current_lesson_completed,  # Завершен ли текущий урок
         })
         return context
 
@@ -282,46 +363,59 @@ def lesson_detail(request, lesson_id):
     try:
         lesson = Lesson.objects.get(id=lesson_id)
     except Lesson.DoesNotExist:
+        logger.error(f"Урок с ID {lesson_id} не найден")
         return JsonResponse({'status': 'error', 'message': 'Lesson not found'}, status=404)
 
     if request.method == 'POST':
-
-        # Получаем данные из POST-запроса
-        user_answers = {key: value for key, value in request.POST.items(
-        ) if key.startswith('question_')}
-        test_id = request.POST.get('test_id')
-
-        if not test_id:
-            return JsonResponse({'status': 'error', 'message': 'Test ID is missing'}, status=400)
-
         try:
-            test = Test.objects.get(id=test_id)
-        except Test.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Test not found'}, status=400)
+            # Получаем данные из JSON-тела запроса
+            data = json.loads(request.body)
+            logger.debug(f"Received POST data: {data}")
 
-        # Вычисляем результаты теста
-        correct_answers, percentage = calculate_test_score(test, user_answers)
+            # Извлекаем данные из JSON
+            user_answers = {key: value for key,
+                            value in data.items() if key.startswith('question_')}
+            test_id = data.get('test_id')
 
-        # Обновляем прогресс пользователя
-        user = request.user
-        course = lesson.course
-        progress, created = Progress.objects.get_or_create(
-            user=user, course=course)
-        progress.completed_lessons.add(lesson)
-        progress.score += correct_answers
-        if not progress.completed_at and progress.completed_lessons.count() == course.lessons.count():
-            progress.completed_at = timezone.now()
-        progress.save()
+            if not test_id:
+                logger.error("Test ID is missing in the request data")
+                return JsonResponse({'status': 'error', 'message': 'Test ID is missing'}, status=400)
 
-        return JsonResponse({
-            'status': 'success',
-            'correct_answers': correct_answers,
-            'total_questions': test.questions.count(),
-            'percentage': percentage,
-            'message': 'Test results processed successfully',
-        })
+            try:
+                test = Test.objects.get(id=test_id)
+            except Test.DoesNotExist:
+                logger.error(f"Test with ID {test_id} not found")
+                return JsonResponse({'status': 'error', 'message': 'Test not found'}, status=400)
+
+            # Вычисляем результаты теста
+            correct_answers, percentage = calculate_test_score(
+                test, user_answers)
+
+            # Обновляем прогресс пользователя
+            user = request.user
+            course = lesson.course
+            progress, created = Progress.objects.get_or_create(
+                user=user, course=course)
+            progress.completed_lessons.add(lesson)
+            progress.score += correct_answers
+            if not progress.completed_at and progress.completed_lessons.count() == course.lessons.count():
+                progress.completed_at = timezone.now()
+            progress.save()
+
+            return JsonResponse({
+                'status': 'success',
+                'correct_answers': correct_answers,
+                'total_questions': test.questions.count(),
+                'percentage': percentage,
+                'message': 'Test results processed successfully',
+            })
+
+        except json.JSONDecodeError:
+            logger.error("Failed to decode JSON")
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
 
     else:
+        logger.error("Method not allowed")
         return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 
 

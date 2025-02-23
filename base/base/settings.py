@@ -30,6 +30,7 @@ DEBUG = config('DEBUG', cast=bool)
 
 ALLOWED_HOSTS = []
 
+LESSONS_PER_WEEK = 4
 
 # Application definition
 

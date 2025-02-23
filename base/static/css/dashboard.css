@@ -373,6 +373,12 @@ body {
   justify-content: center;
   background-color: var(--background-color);
   border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+
+#progressChart {
+  max-height: 300px;
+  max-width: 600px;
 }
 
 /* Mobile menu toggle button */

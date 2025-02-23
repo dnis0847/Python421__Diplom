@@ -5,44 +5,34 @@ from progress.models import Progress
 from payments.models import Payment
 
 def get_user_courses_with_progress(user):
-    """
-    Возвращает курсы пользователя с прогрессом.
-    """
     purchased_courses = Payment.objects.filter(user=user, status='success').select_related('course')
     active_courses_count = 0
     completed_courses_count = 0
     total_training_time = 0
     courses_info = []
-
     for payment in purchased_courses:
         course = payment.course
         try:
             progress = Progress.objects.get(user=user, course=course)
             completed_lessons_count = progress.completed_lessons.count()
             total_lessons_count = course.lessons.count()
-
             progress_percentage = (
                 (completed_lessons_count / total_lessons_count) * 100
                 if total_lessons_count > 0
                 else 0
             )
-
             is_completed = progress.completed_at is not None
-
             if is_completed:
                 completed_courses_count += 1
             else:
                 active_courses_count += 1
-
             total_training_time += completed_lessons_count
-
         except Progress.DoesNotExist:
             completed_lessons_count = 0
             total_lessons_count = course.lessons.count()
             progress_percentage = 0
             is_completed = False
             active_courses_count += 1
-
         course_data = {
             "id": course.id,
             "title": course.title,
@@ -54,15 +44,15 @@ def get_user_courses_with_progress(user):
             "created_at": course.created_at,
             "is_published": course.is_published,
             "image": course.image,
+            "total_lessons_count": course.lessons.count(),  # Add this line
             "progress": {
                 "completed_lessons_count": completed_lessons_count,
                 "total_lessons_count": total_lessons_count,
-                "progress_percentage": round(progress_percentage, 2),
+                "progress_percentage": round(progress_percentage),
                 "is_completed": is_completed,
             },
         }
         courses_info.append(course_data)
-
     return {
         "active_courses_count": active_courses_count,
         "completed_courses_count": completed_courses_count,

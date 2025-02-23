@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-
 {% load static %}
+{% load custom_filters %}
 
 {% block styles %}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -35,7 +35,7 @@
       <div class="container">
         <h2 class="popular__courses__title">Популярные курсы</h2>
         <div class="courses__grid">
-          {% for course in courses %}
+          {% for course in popular_courses %}
             <!-- Карточка курса -->
             <div class="courses__card">
               <div class="courses__card__image">
@@ -63,19 +63,19 @@
                 <div class="courses__card__content__studies__info">
                   <div>
                     <img src="{% static 'images/time.svg' %}" alt="time" />
-                    <span>6 недель</span>
+                    <span>{{ course.lessons_count|ru_pluralize:'час,часа,часов' }}</span>
                   </div>
                   <div>
                     <img src="{% static 'images/peoples.svg' %}" alt="peoples" l />
-                    <span>1234 студента</span>
+                    <span>{{ course.students_count|ru_pluralize:"студент,студента,студентов" }}</span>
                   </div>
                   <div>
                     <img src="{% static 'images/books.svg' %}" alt="books" />
-                    <span>24 урока</span>
+                    <span>{{ course.lessons_count|ru_pluralize:'урок,урока,уроков' }}</span>
                   </div>
                 </div>
               </div>
-              <a href="#">
+              <a href="{{ course.detail_url }}">
                 <button>
                   <span>Записаться на курс</span>
                   <img src="{% static 'images/white_arrow.svg' %}" alt="Записаться на курс" />

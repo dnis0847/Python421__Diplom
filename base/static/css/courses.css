@@ -188,6 +188,35 @@
   padding: 50px 0;
 }
 
+/* Стиль для контейнера лоадера */
+#loader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100px; /* Высота области лоадера */
+  width: 100%; /* Ширина области лоадера */
+}
+
+/* Стиль для спиннера */
+.spinner {
+  border: 4px solid #f3f3f3; /* Светлый фон */
+  border-top: 4px solid #3498db; /* Цвет спиннера */
+  border-radius: 50%; /* Круглая форма */
+  width: 40px; /* Размер спиннера */
+  height: 40px; /* Размер спиннера */
+  animation: spin 1s linear infinite; /* Анимация вращения */
+}
+
+/* Анимация вращения */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 .courses__main__title {
   color: #1f2937;
   font-weight: 700;

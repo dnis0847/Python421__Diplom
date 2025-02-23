@@ -31,11 +31,10 @@
       </div>
       <div class="course-progress">
         <div class="progress-bar">
-          <div class="progress-fill" style="width: 50%;"></div>
+          <div class="progress-fill" style="width: {{ progress_percentage }}%;"></div>
         </div>
-        <span class="progress-text">50% завершено</span>
+        <span class="progress-text">{{ progress_percentage }}% завершено</span>
       </div>
-      <button class="btn primary-btn">Продолжить обучение</button>
     </header>
 
     <section class="course-description">
@@ -50,32 +49,23 @@
           <p>Уроков еще нет.</p>
         {% else %}
           {% for lesson in lessons %}
-            <li class="lesson completed">
+            <li class="lesson {% if lesson in completed_lessons %}completed{% endif %}">
               <a href="{% url 'users:lesson_detail' pk=lesson.pk %}">
                 <span class="lesson-number">{{ lesson.order }}.</span>
-                <span class="lesson-title">{{ lesson.title }}</span>
+                <span class="lesson-title">{{ lesson.title }} {% if lesson in completed_lessons %}(Завершено){% endif %}</span>
               </a>
             </li>
           {% endfor %}
         {% endif %}
       </ul>
     </section>
-    
 
     <section class="course-progress-stats">
       <h2>Ваш прогресс</h2>
       <div class="stats-grid">
         <div class="stat-card">
           <h3>Завершено уроков</h3>
-          <p class="stat-value">2 из 5</p>
-        </div>
-        <div class="stat-card">
-          <h3>Средний балл</h3>
-          <p class="stat-value">85%</p>
-        </div>
-        <div class="stat-card">
-          <h3>Время обучения</h3>
-          <p class="stat-value">4ч 30мин</p>
+          <p class="stat-value">{{ completed_lessons_count }} из {{ lessons_count }}</p>
         </div>
       </div>
     </section>

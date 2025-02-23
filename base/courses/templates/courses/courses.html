@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% load static %}
+{% load custom_filters %}
 
 {% block styles %}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -40,13 +41,14 @@
       <div class="container">
         <div class="filters-wrapper">
           <div class="search-box">
-            <input type="text" placeholder="Поиск курсов..." />
-            <button><i class="fas fa-search"><img src="{% static 'images/search.svg' %}" alt="" /></i></button>
+            <input type="text" id="search-input" placeholder="Поиск курсов..." />
+            <button id="search-button"><i class="fas fa-search"><img src="{% static 'images/search.svg' %}" alt="" /></i></button>
           </div>
           <div class="filter-groups">
             <div class="filter-group">
               <label for="level-select">Уровень</label>
               <select id="level-select">
+                <option value="all" selected>Все уровни</option>
                 <option value="beginner">Начинающий</option>
                 <option value="intermediate">Средний</option>
                 <option value="advanced">Продвинутый</option>
@@ -55,24 +57,24 @@
             <div class="filter-group">
               <label for="price-select">Стоимость</label>
               <select id="price-select">
+                <option value="all" selected>Все цены</option>
                 <option value="paid">Платный</option>
                 <option value="free">Бесплатный</option>
               </select>
             </div>
             <div class="filter-group">
-              <label for="teacher-select">Преподователь</label>
+              <label for="teacher-select">Преподаватель</label>
               <select id="teacher-select">
-                <option value="Белоусов">Белоусов</option>
-                <option value="Варгантов">Варгантов</option>
-                <option value="Воронов">Воронов</option>
-                <option value="Петров">Петров</option>
-                <option value="Харченко">Харченко</option>
+                <option value="all" selected>Все преподаватели</option>
+                {% for teacher in teachers %}
+                  <option value="{{ teacher.user.last_name }}">{{ teacher.user.last_name }}</option>
+                {% endfor %}
               </select>
             </div>
             <div class="filter-group">
               <label for="view-select">Показать курсы</label>
               <select id="view-select">
-                <option value="all">Все курсы</option>
+                <option value="all" selected>Все курсы</option>
                 <option value="popular">Популярные</option>
                 <option value="new">Новые</option>
               </select>
@@ -80,7 +82,7 @@
             <div class="filter-group">
               <label for="sort-select">Сортировка</label>
               <select id="sort-select">
-                <option value="all">По рейтингу</option>
+                <option value="all" selected>По рейтингу</option>
                 <option value="price_asc">По цене (низкая - высокая)</option>
                 <option value="price_desc">По цене (высокая - низкая)</option>
               </select>
@@ -96,10 +98,12 @@
 
     <section class="courses-main">
       <div class="container">
-        <h2 class="courses__main__title">
-          Все курсы
-        </h2>
-        <div class="courses-grid" id="courses-container"></div>
+        <h2 class="courses__main__title">Все курсы</h2>
+        <div class="courses-grid" id="courses-container">
+          <div id="loader">
+            <div class="spinner"></div>
+          </div>
+        </div>
         <div class="courses-pagination">
           <button id="load-more">Загрузить еще</button>
         </div>

@@ -114,10 +114,17 @@ body {
 
 .video-container {
   margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-container iframe {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .lesson-video {
-  width: 100%;
+  width: 1200px;
   height: auto;
   border-radius: 0.5rem;
 }

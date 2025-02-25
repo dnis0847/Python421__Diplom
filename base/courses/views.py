@@ -4,12 +4,12 @@ from django.core.paginator import Paginator
 from django.views.generic import ListView, DetailView
 from .models import Course, Category
 from users.models import Profile
+from payments.models import Payment
 from progress.models import Progress
 from django.contrib.auth.models import User
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db import models
 import markdown
-
 
 class CoursesView(ListView):
     model = Course
@@ -35,22 +35,33 @@ def load_courses(request):
     sort = request.GET.get('sort', None)
     min_price = request.GET.get('min_price', None)
     max_price = request.GET.get('max_price', None)
+    search_query = request.GET.get('search', None)
 
     # Базовый запрос курсов
     courses = Course.objects.select_related(
         'teacher', 'category').prefetch_related('lessons')
 
+    # Поиск
+    if search_query:
+        courses = courses.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(teacher__first_name__icontains=search_query) |
+            Q(teacher__last_name__icontains=search_query) |
+            Q(category__name__icontains=search_query)
+        )
+
     # Фильтрация
     if category:
         courses = courses.filter(category__name=category)
-    if level and level in dict(Course.LEVEL_CHOICES):
+    if level and level != 'all':
         courses = courses.filter(level=level)
     if price and price != 'all':
         if price == 'free':
             courses = courses.filter(price=0)
         elif price == 'paid':
             courses = courses.filter(price__gt=0)
-    if teacher != 'all':
+    if teacher and teacher != 'all':
         courses = courses.filter(teacher__last_name__icontains=teacher)
     if min_price and max_price:
         try:
@@ -70,6 +81,8 @@ def load_courses(request):
         courses = courses.order_by('price')
     elif sort == 'price_desc':
         courses = courses.order_by('-price')
+    # elif sort == 'rating':
+    #     courses = courses.order_by('-rating')
 
     # Аннотация данных
     courses = courses.annotate(
@@ -98,6 +111,7 @@ def load_courses(request):
                 'students_count': course.students_count,
                 'completed_students_count': course.completed_students_count,
                 'lessons_count': course.lessons.count(),
+                # 'rating': course.rating,
             }
             for course in page.object_list
         ],
@@ -120,9 +134,14 @@ class CourseDetailView(DetailView):
             html_content = markdown.markdown(course.full_description)
         else:
             html_content = None  # Если Markdown-текста нет
+            
+        students_count = Progress.objects.filter(course=course).count()
 
         context['title'] = f'Learnify | {course.title}'
         context['categorys'] = Category.objects.all()
         context['lessons'] = course.lessons.all()
+        context['lessons_count'] = course.lessons.count()
         context['html_content'] = html_content
+        context['students_count'] = students_count
         return context
+

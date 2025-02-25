@@ -1,88 +1,83 @@
-let currentPage = 1
-let currentCategory = null
-const loadMoreBtn = document.getElementById('load-more')
-const coursesContainer = document.getElementById('courses-container')
-const existingCourseIds = new Set()
-const catCards = document.querySelectorAll('.category-card')
-const allCategoriesBtn = document.getElementById('all-categories')
-const titleCourses = document.querySelector('.courses__main__title')
-const searchInput = document.getElementById('search-input')
-const searchButton = document.getElementById('search-button')
+let currentPage = 1;
+let currentCategory = null;
+const loadMoreBtn = document.getElementById('load-more');
+const coursesContainer = document.getElementById('courses-container');
+const existingCourseIds = new Set();
+const catCards = document.querySelectorAll('.category-card');
+const allCategoriesBtn = document.getElementById('all-categories');
+const titleCourses = document.querySelector('.courses__main__title');
 
 // Функция загрузки курсов
 async function loadCourses() {
   try {
     const categoryParam = currentCategory
       ? `&category=${encodeURIComponent(currentCategory)}`
-      : ''
-    const level = document.getElementById('level-select').value
-    const price = document.getElementById('price-select').value
-    const teacher = document.getElementById('teacher-select').value
-    const view = document.getElementById('view-select').value
-    const sort = document.getElementById('sort-select').value
-    const searchQuery = searchInput.value
+      : '';
+    const level = document.getElementById('level-select').value;
+    const price = document.getElementById('price-select').value;
+    const teacher = document.getElementById('teacher-select').value;
+    const view = document.getElementById('view-select').value;
+    const sort = document.getElementById('sort-select').value;
 
     const response = await fetch(
-      //   `/courses/load-courses/?page=${currentPage}${categoryParam}&level=${level}&price=${price}&teacher=${teacher}&view=${view}&sort=${sort}&search=${encodeURIComponent(searchQuery)}`,
-      `/courses/load-courses/?page=${currentPage}${categoryParam}&level=${level}&price=${price}&teacher=${teacher}&view=${view}&search=${encodeURIComponent(
-        searchQuery
-      )}`
-    )
+      `/courses/load-courses/?page=${currentPage}${categoryParam}&level=${level}&price=${price}&teacher=${teacher}&view=${view}`
+      // `/courses/load-courses/?page=${currentPage}${categoryParam}&level=${level}&price=${price}&teacher=${teacher}&view=${view}&sort=${sort}`
+    );
 
     if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`)
+      throw new Error(`Ошибка HTTP: ${response.status}`);
     }
 
-    const data = await response.json()
+    const data = await response.json();
 
     // Очищаем контейнер, если это первая страница
     if (currentPage === 1) {
-      coursesContainer.innerHTML = ''
-      existingCourseIds.clear()
+      coursesContainer.innerHTML = '';
+      existingCourseIds.clear();
     }
 
     // Добавляем новые карточки
     data.courses.forEach((course) => {
       if (!existingCourseIds.has(course.id)) {
-        existingCourseIds.add(course.id)
-        const courseHTML = createCourseCard(course)
-        coursesContainer.insertAdjacentHTML('beforeend', courseHTML)
+        existingCourseIds.add(course.id);
+        const courseHTML = createCourseCard(course);
+        coursesContainer.insertAdjacentHTML('beforeend', courseHTML);
       }
-    })
+    });
 
     // Проверяем, есть ли курсы
     if (!data.courses.length) {
       if (!coursesContainer.querySelector('p')) {
-        coursesContainer.innerHTML = '<p>Курсов не найдено</p>'
+        coursesContainer.innerHTML = '<p>Курсов данной категории пока нет</p>';
       }
     }
 
     // Скрываем или показываем кнопку "Загрузить еще"
     if (!data.courses.length || !data.has_next) {
-      loadMoreBtn.style.display = 'none'
+      loadMoreBtn.style.display = 'none';
     } else {
-      loadMoreBtn.style.display = 'block'
+      loadMoreBtn.style.display = 'block';
     }
 
-    currentPage++
+    currentPage++;
   } catch (error) {
-    console.error('Ошибка при загрузке курсов:', error)
+    console.error('Ошибка при загрузке курсов:', error);
     coursesContainer.innerHTML =
-      '<p>Произошла ошибка при загрузке курсов. Пожалуйста, попробуйте позже.</p>'
+      '<p>Произошла ошибка при загрузке курсов. Пожалуйста, попробуйте позже.</p>';
   }
 }
 
 // Функция склонения числительных
 function pluralize(count, one, few, many) {
   if (count % 10 === 1 && count % 100 !== 11) {
-    return one
+    return one;
   } else if (
     [2, 3, 4].includes(count % 10) &&
     ![12, 13, 14].includes(count % 100)
   ) {
-    return few
+    return few;
   } else {
-    return many
+    return many;
   }
 }
 
@@ -141,83 +136,73 @@ function createCourseCard(course) {
         </button>
       </a>
     </div>
-  `
+  `;
 }
 
 // Фильтрация курсов по категории
 function filterCoursesByCategory(categoryName) {
-  currentCategory = categoryName
-  currentPage = 1
-  existingCourseIds.clear()
-  loadCourses()
+  currentCategory = categoryName;
+  currentPage = 1;
+  existingCourseIds.clear();
+  loadCourses();
   if (currentCategory) {
-    titleCourses.innerHTML = currentCategory
+    titleCourses.innerHTML = currentCategory;
   }
-}
-
-// Функция сброса фильтров
-function resetFilters() {
-  document.getElementById('level-select').value = 'all'
-  document.getElementById('price-select').value = 'all'
-  document.getElementById('teacher-select').value = 'all'
-  document.getElementById('view-select').value = 'all'
-  document.getElementById('sort-select').value = 'all'
-  searchInput.value = ''
-  currentCategory = null
-  currentPage = 1
-  loadCourses()
-  titleCourses.innerHTML = 'Все курсы'
 }
 
 // Обработчики событий
-loadMoreBtn.addEventListener('click', loadCourses)
+loadMoreBtn.addEventListener('click', loadCourses);
 
 catCards.forEach((card) => {
   card.addEventListener('click', (e) => {
-    catCards.forEach((c) => c.classList.remove('active'))
-    allCategoriesBtn.classList.remove('active')
-    e.currentTarget.classList.add('active')
-    const categoryName = e.currentTarget.querySelector('h3').innerText
-    filterCoursesByCategory(categoryName)
-  })
-})
+    catCards.forEach((c) => c.classList.remove('active'));
+    allCategoriesBtn.classList.remove('active');
+    e.currentTarget.classList.add('active');
+    const categoryName = e.currentTarget.querySelector('h3').innerText;
+    filterCoursesByCategory(categoryName);
+  });
+});
 
 allCategoriesBtn.addEventListener('click', () => {
-  catCards.forEach((c) => c.classList.remove('active'))
-  allCategoriesBtn.classList.add('active')
-  currentCategory = null
-  currentPage = 1
-  loadCourses()
-  titleCourses.innerHTML = 'Все курсы'
-})
+  catCards.forEach((c) => c.classList.remove('active'));
+  allCategoriesBtn.classList.add('active');
+  currentCategory = null;
+  currentPage = 1;
+  loadCourses();
+  titleCourses.innerHTML = 'Все курсы';
+});
 
 document.getElementById('apply-filters').addEventListener('click', () => {
-  coursesContainer.innerHTML = ''
-  existingCourseIds.clear()
-  currentPage = 1
-  loadCourses()
-})
+  coursesContainer.innerHTML = '';
+  existingCourseIds.clear();
+  currentPage = 1;
+  loadCourses();
+});
 
-document.getElementById('reset-filters').addEventListener('click', resetFilters)
-
-// Обработчики событий для поиска
-searchButton.addEventListener('click', () => {
-  coursesContainer.innerHTML = ''
-  existingCourseIds.clear()
-  currentPage = 1
-  loadCourses()
-})
-
-searchInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    coursesContainer.innerHTML = ''
-    existingCourseIds.clear()
-    currentPage = 1
-    loadCourses()
-  }
-})
+document.getElementById('reset-filters').addEventListener('click', () => {
+  coursesContainer.innerHTML = '';
+  existingCourseIds.clear();
+  document.getElementById('level-select').value = 'all';
+  document.getElementById('price-select').value = 'all';
+  document.getElementById('teacher-select').value = 'all';
+  document.getElementById('view-select').value = 'all';
+  document.getElementById('sort-select').value = 'all';
+  currentCategory = null;
+  currentPage = 1;
+  loadCourses();
+  titleCourses.innerHTML = 'Все курсы';
+});
 
 // Загружаем первые курсы при загрузке страницы
 window.addEventListener('load', () => {
-  resetFilters()
-})
+  // Устанавливаем значения фильтров по умолчанию
+  document.getElementById('level-select').value = 'all';
+  document.getElementById('price-select').value = 'all';
+  document.getElementById('teacher-select').value = 'all';
+  document.getElementById('view-select').value = 'all';
+  document.getElementById('sort-select').value = 'all';
+
+  // Загружаем первые курсы
+  currentPage = 1;
+  loadCourses();
+});

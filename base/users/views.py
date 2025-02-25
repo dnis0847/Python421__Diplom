@@ -27,6 +27,8 @@ from users.models import Profile
 from .services import get_user_courses_with_progress
 from django.conf import settings
 
+import logging
+logger = logging.getLogger(__name__)
 
 class RegisterView(FormView):
     """

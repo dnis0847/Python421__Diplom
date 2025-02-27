@@ -1,0 +1,50 @@
+{% extends 'base_dashboard.html' %}
+{% load static %}
+
+{% block styles %}
+  {{ block.super }}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/course-styles.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/course_edit.css' %}" />
+{% endblock %}
+
+{% block content %}
+  <main class="main-content">
+    <header class="course-header">
+      <h1 class="course-title">Редактирование урока: {{ object.title }}</h1>
+    </header>
+
+    <section class="course-edit-form">
+      <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="title">Название урока:</label>
+          <input type="text" id="title" name="title" value="{{ object.title }}" required />
+        </div>
+        <div class="form-group">
+          <label for="content">Содержание урока (markdown):</label>
+          <textarea id="content" name="content" rows="4" required>{{ object.content }}</textarea>
+        </div>
+        <div class="form-group">
+          <label for="preview">Предварительный просмотр:</label>
+          <div id="preview" class="markdown-preview"></div>
+        </div>
+        <div class="form-group">
+          <label for="video_url">Ссылка на видео:</label>
+          <input type="url" id="video_url" name="video_url" value="{% if object.video_url != None %}{{ object.video_url }}{% endif %}" />
+        </div>
+        <div class="form-group">
+          <label for="order">Порядковый номер урока:</label>
+          <input type="number" id="order" name="order" value="{{ object.order }}" required />
+        </div>
+        <button type="submit" class="btn primary-btn">Сохранить изменения</button>
+      </form>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="{% static './js/markdown.js' %}"></script>
+{% endblock %}

@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
   <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
   <link rel="stylesheet" href="{% static 'css/courses.css' %}" />
   <link rel="stylesheet" href="{% static 'css/course_detail.css' %}" />
@@ -42,6 +43,9 @@
               
               
               
+              
+              
+              
               alert-{{ message.tags }}
             {% endif %}"
             role="alert">{{ message }}</div>
@@ -55,11 +59,11 @@
               <div class="flex justify-between items-center mb-4">
                 <div class="feedback flex items-center">
                   <img src="{% static 'images/star.svg' %}" alt="" />
-                  <span class="text-lg font-semibold">4.8 (256 отзывов)</span>
+                  <span class="text-lg font-semibold">{{ average_rating }} ({{ reviews_count|ru_pluralize:'отзыв,отзыва,отзывов' }})</span>
                 </div>
                 <div class="text-gray-600">
                   <i data-lucide="user" class="w-5 h-5 inline-block mr-1"></i>
-                  <span>{{ students_count|ru_pluralize:"студент,студента,студентов" }}</span>
+                  <span>{{ students_count|ru_pluralize:'студент,студента,студентов' }}</span>
                 </div>
               </div>
               <div class="flex justify-between items-center">
@@ -90,30 +94,62 @@
               </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-              <h2 class="text-2xl font-semibold mb-4">Отзывы студентов</h2>
-              <div class="mb-4">
-                <div class="feedback__header items-center mb-2">
-                  <span class="text-lg font-semibold ml-2 text-gray-600">Анна С.</span>
-                </div>
-                <p class="text-gray-700">Отличный курс! Очень подробно объясняется материал, много практических заданий. Преподаватель отвечает на все вопросы и помогает разобраться в сложных моментах.</p>
-              </div>
-              <div id="additional-reviews" class="hidden">
-                <div class="mb-4">
-                  <div class="feedback__header items-center mb-2">
-                    <span class="text-lg font-semibold ml-2 text-gray-600">Петр М.</span>
+            {% if primary_reviews %}
+              <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Отзывы студентов</h2>
+
+                <!-- Основные отзывы -->
+                {% for review in primary_reviews %}
+                  <div class="mb-4">
+                    <div class="review_box">
+                      <div class="feedback__header items-center mb-2">
+                        <span class="text-lg font-semibold ml-2 text-gray-600">{{ review.user.get_full_name|default:review.user.username }}</span>
+                        <div class="rating flex items-center ml-2">
+                          {% for i in "12345" %}
+                            {% if forloop.counter <= review.rating %}
+                              <i class="fas fa-star text-yellow-500"></i>
+                            {% else %}
+                              <i class="far fa-star text-gray-300"></i>
+                            {% endif %}
+                          {% endfor %}
+                        </div>
+                      </div>
+                      <span class="text-sm text-gray-500">{{ review.created_at|date:'d.m.Y' }}</span>
+                    </div>
+                    <p class="text-gray-700">{{ review.comment }}</p>
                   </div>
-                  <p class="text-gray-700">Хороший курс для начинающих разработчиков. Есть некоторые моменты, которые можно было бы объяснить подробнее, но в целом я доволен результатом.</p>
+                {% endfor %}
+
+                <!-- Дополнительные отзывы -->
+                <div id="additional-reviews" class="hidden">
+                  {% for review in additional_reviews %}
+                    <div class="mb-4">
+                      <div class="review_box">
+                        <div class="feedback__header items-center mb-2">
+                          <span class="text-lg font-semibold ml-2 text-gray-600">{{ review.user.get_full_name|default:review.user.username }}</span>
+                          <div class="rating flex items-center ml-2">
+                            {% for i in "12345" %}
+                              {% if forloop.counter <= review.rating %}
+                                <i class="fas fa-star text-yellow-500"></i>
+                              {% else %}
+                                <i class="far fa-star text-gray-300"></i>
+                              {% endif %}
+                            {% endfor %}
+                          </div>
+                        </div>
+                        <span class="text-sm text-gray-500">{{ review.created_at|date:'d.m.Y' }}</span>
+                      </div>
+                      <p class="text-gray-700">{{ review.comment }}</p>
+                    </div>
+                  {% endfor %}
                 </div>
-                <div class="mb-4">
-                  <div class="feedback__header items-center mb-2">
-                    <span class="text-lg font-semibold ml-2 text-gray-600">Елена К.</span>
-                  </div>
-                  <p class="text-gray-700">Прекрасный курс! Я давно хотела изучить React, и этот курс помог мне освоить его с нуля. Теперь я чувствую себя уверенно при работе с React-проектами.</p>
-                </div>
+
+                {% if additional_reviews %}
+                  <!-- Кнопка "Показать все отзывы" -->
+                  <button id="toggle-reviews" class="btn text-indigo-600 font-semibold flex items-center">Показать все отзывы <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i></button>
+                {% endif %}
               </div>
-              <button id="toggle-reviews" class="btn text-indigo-600 font-semibold flex items-center">Показать все отзывы <i data-lucide="chevron-down" class="w-4 h-4 ml-1"></i></button>
-            </div>
+            {% endif %}
           </div>
 
           <div class="sidebar">
@@ -134,11 +170,11 @@
               <ul class="course__details">
                 <li class="flex items-center text-gray-700">
                   <img src="{% static 'images/time.svg' %}" alt="Продолжительность" />
-                  Продолжительность: {{ lessons_count|ru_pluralize:"час,часа,часов" }}
+                  Продолжительность: {{ lessons_count|ru_pluralize:'час,часа,часов' }}
                 </li>
                 <li class="flex items-center text-gray-700">
                   <img src="{% static 'images/date.svg' %}" alt="Дата публикации" />
-                  Дата создания: {{ course.created_at|date:"d.m.Y" }}
+                  Дата создания: {{ course.created_at|date:'d.m.Y' }}
                 </li>
               </ul>
             </div>

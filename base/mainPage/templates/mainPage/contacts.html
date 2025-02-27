@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block styles %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/about__styles.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/contacts__styles.css' %}" />
+{% endblock %}
+
+{% block content %}
+  {% include '../includes/header.html' %}
+
+  <main class="main-content">
+    <header class="page-header">
+      <h1 class="page-title">Свяжитесь с нами</h1>
+      <p class="page-subtitle">Мы всегда рады помочь вам!</p>
+    </header>
+
+    <div class="container">
+      <section class="contact-info-section">
+        <div class="contact-card">
+          <i class="fas fa-map-marker-alt"></i>
+          <h3>Адрес</h3>
+          <p>г. Москва, ул. Примерная, д. 123</p>
+        </div>
+        <div class="contact-card">
+          <i class="fas fa-phone"></i>
+          <h3>Телефон</h3>
+          <p>+7 (999) 123-45-67</p>
+        </div>
+        <div class="contact-card">
+          <i class="fas fa-envelope"></i>
+          <h3>Email</h3>
+          <p>info@learnify.com</p>
+        </div>
+        <div class="contact-card">
+          <i class="fas fa-clock"></i>
+          <h3>Часы работы</h3>
+          <p>Пн-Пт: 9:00 - 18:00</p>
+        </div>
+      </section>
+
+      <section class="map-section">
+        <h2>Наше расположение</h2>
+        <div id="map"></div>
+      </section>
+    </div>
+  </main>
+
+  {% include '../includes/footer.html' %}
+  <script src="{% static './js/mainPageBurgerMenu.js' %}"></script>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="{% static './js/map.js' %}"></script>
+{% endblock %}

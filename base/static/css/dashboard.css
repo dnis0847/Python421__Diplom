@@ -348,8 +348,26 @@ body {
   color: white;
 }
 
+.danger-btn {
+  background-color: #ef4444;
+  color: white;
+}
+
+.danger-btn:hover {
+  background-color: #f40606;
+  color: white;
+}
+
 .primary-btn:hover {
   background-color: var(--secondary-color);
+}
+
+.btn_control {
+  margin-top: 2rem;
+}
+
+.add-course-section {
+  margin-bottom: 2rem;
 }
 
 /* Progress Section */

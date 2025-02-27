@@ -1,7 +1,12 @@
+# Убедитесь, что импортируете модель Category
+from courses.models import Category
+from django.shortcuts import get_object_or_404, redirect
+from courses.models import Course
 from django.core.serializers.json import DjangoJSONEncoder
 from django.shortcuts import render
 from django.urls import reverse_lazy, reverse
-from django.views.generic import TemplateView, DetailView, FormView
+from django.views.generic import TemplateView, DetailView, FormView, View
+from django.views.generic.edit import UpdateView, CreateView
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.views import LoginView
 from django.contrib.auth import login, logout
@@ -9,13 +14,18 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Count
 from django.core.cache import cache
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import JsonResponse
 import markdown
 import json
 from pygments.formatters import HtmlFormatter
+from pygments import highlight
+from pygments.lexers import get_lexer_by_name
+from pygments.util import ClassNotFound
+from django.utils.safestring import mark_safe
+from django.utils.html import escape
 from django.utils import timezone
 
 # Локальные модули проекта
@@ -23,12 +33,14 @@ from .forms import RegistrationForm, LoginForm
 from courses.models import Course, Lesson, Test, Question, Answer
 from payments.models import Payment
 from progress.models import Progress
+from reviews.models import Review
 from users.models import Profile
 from .services import get_user_courses_with_progress
 from django.conf import settings
 
 import logging
 logger = logging.getLogger(__name__)
+
 
 class RegisterView(FormView):
     """
@@ -110,6 +122,24 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         context['title'] = 'Learnify | Dashboard'
         context['user_profile'] = profile
         context.update(courses_data)
+
+        if profile.role == 'teacher':
+            # Получаем количество активных курсов
+            active_courses_count = Course.objects.filter(teacher=user).count()
+
+            # Получаем количество студентов, записанных на курсы преподавателя
+            total_students_count = Payment.objects.filter(
+                course__teacher=user, status='success'
+            ).aggregate(total_students=Count('user', distinct=True))['total_students']
+
+            # Получаем общую длительность всех курсов преподавателя
+            total_duration = sum(course.lessons.count()
+                                 for course in Course.objects.filter(teacher=user))
+
+            context['active_courses_count'] = active_courses_count
+            context['total_students_count'] = total_students_count
+            context['total_duration'] = total_duration
+
         return context
 
 
@@ -145,10 +175,14 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
         cache_key = f"course_access_{user.id}_{course.id}"
         has_access = cache.get(cache_key)
         if has_access is None:
-            # Проверяем, является ли курс бесплатным или оплаченным
-            has_access = course.price == 0 or Payment.objects.filter(
-                user=user, course=course, status='success'
-            ).exists()
+            # Проверяем, является ли пользователь преподавателем курса
+            if course.teacher == user:
+                has_access = True
+            else:
+                # Проверяем, является ли курс бесплатным или оплаченным
+                has_access = course.price == 0 or Payment.objects.filter(
+                    user=user, course=course, status='success'
+                ).exists()
             # Кэшируем результат на 1 час
             cache.set(cache_key, has_access, timeout=60 * 60)
 
@@ -197,6 +231,10 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
         else:
             progress_percentage = 0
 
+        # Получаем отзыв на текущий курс текущего пользователя
+        review = Review.objects.filter(
+            user=user, course=course).first()
+
         # Добавляем данные в контекст
         context.update({
             'title': f'Learnify | {course.title}',
@@ -205,6 +243,7 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
             'completed_lessons': completed_lessons,
             'completed_lessons_count': completed_lessons_count,
             'progress_percentage': round(progress_percentage),
+            'user_review': review,
         })
         return context
 
@@ -215,14 +254,20 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
     context_object_name = 'lesson'
 
     def check_lesson_access(self, lesson, user):
+        """
+        Проверяет доступ пользователя к уроку.
+        """
         course = lesson.course
         cache_key = f"course_access_{user.id}_{course.id}"
         has_access = cache.get(cache_key)
+
         if has_access is None:
             has_access = course.price == 0 or Payment.objects.filter(
                 user=user, course=course, status='success'
             ).exists()
+            # Кэшируем на 1 час
             cache.set(cache_key, has_access, timeout=60 * 60)
+
         if not has_access:
             messages.warning(
                 self.request,
@@ -232,7 +277,7 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
 
     def get_queryset(self):
         """
-        Оптимизируем запросы для загрузки связанных данных.
+        Оптимизирует запросы для загрузки связанных данных.
         """
         return (
             Lesson.objects.select_related('course')  # Загружаем связанный курс
@@ -251,6 +296,9 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
         )
 
     def get(self, request, *args, **kwargs):
+        """
+        Обрабатывает GET-запрос, проверяя доступ к уроку.
+        """
         lesson = self.get_object()
         user = request.user
         # Проверяем доступ к уроку
@@ -260,6 +308,9 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
+        """
+        Добавляет дополнительные данные в контекст шаблона.
+        """
         context = super().get_context_data(**kwargs)
         lesson = self.get_object()
         user = self.request.user
@@ -270,10 +321,12 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
         # Получаем все уроки курса, отсортированные по порядку
         lessons = course.lessons.order_by('order')
         total_lessons = lessons.count()
-        progress = None
 
         # Находим порядковый номер текущего урока
         current_lesson_index = list(lessons).index(lesson) + 1
+
+        # Инициализируем progress перед try-except
+        progress = None
 
         # Вычисляем процент прохождения уроков
         try:
@@ -287,7 +340,7 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
 
         # Проверяем, завершен ли текущий урок
         is_current_lesson_completed = False
-        if hasattr(progress, 'completed_lessons'):
+        if progress and hasattr(progress, 'completed_lessons'):
             is_current_lesson_completed = progress.completed_lessons.filter(
                 id=lesson.id).exists()
 
@@ -306,16 +359,11 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
         course_url = reverse('users:course_detail', kwargs={'pk': course.pk})
 
         # Преобразование Markdown в HTML с подсветкой синтаксиса
-        if lesson.content:
-            html_content = markdown.markdown(
-                lesson.content,
-                extensions=['fenced_code', 'codehilite']
-            )
-        else:
-            html_content = None
+        html_content = self.convert_markdown_to_html(lesson.content)
 
         # Получение CSS-стилей для подсветки синтаксиса
-        css_styles = HtmlFormatter().get_style_defs('.codehilite')
+        formatter = HtmlFormatter(style="colorful")
+        css_styles = formatter.get_style_defs('.codehilite')
 
         # Добавляем данные о тестах, вопросах и ответах
         tests = lesson.tests.all()  # Получаем все тесты, связанные с уроком
@@ -357,7 +405,57 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
             'next_lesson_url': next_lesson_url,  # Ссылка на следующий урок
             'is_current_lesson_completed': is_current_lesson_completed,  # Завершен ли текущий урок
         })
+
         return context
+
+    def convert_markdown_to_html(self, content):
+        """
+        Преобразует Markdown-контент в HTML с подсветкой синтаксиса.
+        """
+        if not content or not content.strip():
+            return None
+
+        try:
+            # Используем кэширование для Markdown-контента
+            cache_key = f"markdown_{hash(content)}"
+            html_content = cache.get(cache_key)
+
+            if not html_content:
+                # Преобразуем Markdown в HTML
+                html_content = markdown.markdown(
+                    content,
+                    extensions=['fenced_code', 'codehilite', 'extra']
+                )
+
+                # Добавляем подсветку синтаксиса для кодовых блоков
+                def process_code_blocks(html):
+                    import re
+                    code_block_pattern = re.compile(
+                        r'<pre><code class="(.+?)">(.*?)</code></pre>', re.DOTALL)
+
+                    def replace_match(match):
+                        language = match.group(1)
+                        code = match.group(2)
+                        try:
+                            lexer = get_lexer_by_name(language)
+                        except ClassNotFound:
+                            # Если язык не найден, используем plain text
+                            lexer = get_lexer_by_name('text')
+                        formatter = HtmlFormatter()
+                        highlighted_code = highlight(code, lexer, formatter)
+                        return f'<div class="highlight">{highlighted_code}</div>'
+
+                    return code_block_pattern.sub(replace_match, html)
+
+                html_content = process_code_blocks(html_content)
+                # Кэшируем на 1 час
+                cache.set(cache_key, html_content, timeout=60 * 60)
+
+            return mark_safe(html_content)  # Отмечаем HTML как безопасный
+
+        except Exception as e:
+            # В случае ошибки выводим сообщение об ошибке
+            return mark_safe(f"<p>Ошибка при преобразовании Markdown: {escape(str(e))}</p>")
 
 
 @csrf_exempt
@@ -471,3 +569,251 @@ def mark_lesson_complete(request, lesson_id):
             return JsonResponse({'status': 'error', 'message': str(e)})
     else:
         return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+
+@login_required
+def add_review(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    # Проверяем, есть ли уже отзыв от этого пользователя для данного курса
+    user_review = Review.objects.filter(
+        user=request.user, course=course).first()
+
+    if request.method == 'POST':
+        rating = request.POST.get('rating')
+        comment = request.POST.get('comment')
+
+        if not rating or not comment:
+            messages.error(request, "Пожалуйста, заполните все поля.")
+            return redirect('users:course_detail', pk=course_id)
+
+        try:
+            rating = int(rating)
+            if rating < 1 or rating > 5:
+                raise ValueError(
+                    "Неверная оценка. Выберите значение от 1 до 5.")
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('users:course_detail', pk=course_id)
+
+        if user_review:
+            # Если отзыв уже существует, обновляем его
+            user_review.rating = rating
+            user_review.comment = comment
+            user_review.save()
+            messages.success(request, "Ваш отзыв успешно обновлен!")
+        else:
+            # Если отзыва нет, создаем новый
+            Review.objects.create(
+                user=request.user,
+                course=course,
+                rating=rating,
+                comment=comment
+            )
+            messages.success(request, "Ваш отзыв успешно отправлен!")
+
+        return redirect('users:course_detail', pk=course_id)
+
+    # Если метод не POST, перенаправляем на страницу курса
+    return redirect('users:course_detail', pk=course_id)
+
+
+@login_required
+def delete_review(request, course_id):
+    """
+    Представление для удаления отзыва пользователя для данного курса.
+    """
+    course = get_object_or_404(Course, id=course_id)
+    user = request.user
+
+    # Находим отзыв пользователя для данного курса
+    review = Review.objects.filter(user=user, course=course).first()
+
+    if review:
+        # Удаляем отзыв
+        review.delete()
+        messages.success(
+            request, "Ваш отзыв успешно удален. Вы можете оставить новый.")
+    else:
+        messages.warning(request, "У вас нет отзыва для этого курса.")
+
+    # Перенаправляем пользователя на страницу курса
+    return redirect('users:course_detail', pk=course_id)
+
+
+class CourseEditView(LoginRequiredMixin, UpdateView):
+    """
+    Представление для редактирования курса.
+    """
+    model = Course
+    template_name = 'users/course_edit.html'
+    context_object_name = 'course'
+    fields = ['title', 'description',
+              'full_description', 'category', 'level', 'image', 'price']
+    success_url = reverse_lazy('users:dashboard')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        course = self.get_object()
+
+        # Получаем все категории
+        categories = Category.objects.all()
+
+        # Получаем все уроки, связанные с данным курсом
+        lessons = course.lessons.all().order_by('order')
+
+        context['title'] = f'Learnify | Редактирование: {course.title}'
+        context['categories'] = categories
+        context['lessons'] = lessons  # Добавляем уроки в контекст
+        return context
+
+    def form_valid(self, form):
+        """
+        Обработка валидной формы.
+        """
+        course = form.save(commit=False)
+        course.save()
+        messages.success(self.request, "Изменения успешно сохранены.")
+        return super().form_valid(form)
+
+    def get(self, request, *args, **kwargs):
+        """
+        Переопределяем метод get для проверки доступа перед отображением курса.
+        """
+        course = self.get_object()
+        user = request.user
+
+        # Проверяем, является ли пользователь преподавателем курса
+        if course.teacher != user:
+            messages.warning(
+                self.request,
+                "У вас нет прав для редактирования этого курса."
+            )
+            return redirect('users:dashboard')
+
+        return super().get(request, *args, **kwargs)
+
+
+class CourseDeleteView(LoginRequiredMixin, View):
+    """
+    Представление для удаления курса.
+    """
+
+    def post(self, request, *args, **kwargs):
+        course_id = kwargs.get('pk')
+        course = get_object_or_404(Course, id=course_id)
+
+        # Проверяем, является ли пользователь преподавателем курса
+        if course.teacher != request.user:
+            messages.warning(
+                request,
+                "У вас нет прав для удаления этого курса."
+            )
+            return redirect('users:dashboard')
+
+        # Удаляем курс
+        course.delete()
+        messages.success(request, "Курс успешно удален.")
+        return redirect('users:dashboard')
+
+
+class CourseCreateView(LoginRequiredMixin, CreateView):
+    """
+    Представление для создания нового курса.
+    """
+    model = Course
+    template_name = 'users/course_create.html'
+    fields = ['title', 'description', 'full_description',
+              'category', 'level', 'image', 'price']
+    success_url = reverse_lazy('users:dashboard')
+
+    def form_valid(self, form):
+        """
+        Обработка валидной формы.
+        """
+        course = form.save(commit=False)
+        # Устанавливаем текущего пользователя как преподавателя курса
+        course.teacher = self.request.user
+        course.save()
+        messages.success(self.request, "Курс успешно создан.")
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Получаем все категории
+        context['categories'] = Category.objects.all()
+        return context
+
+
+class LessonCreateView(LoginRequiredMixin, CreateView):
+    """
+    Представление для создания нового урока.
+    """
+    model = Lesson
+    template_name = 'users/lesson_create.html'
+    fields = ['title', 'content', 'video_url', 'order']
+
+    def form_valid(self, form):
+        """
+        Обработка валидной формы.
+        """
+        lesson = form.save(commit=False)
+        course_id = self.kwargs.get('course_id')
+        course = get_object_or_404(Course, id=course_id)
+
+        # Проверяем, является ли пользователь преподавателем курса
+        if course.teacher != self.request.user:
+            messages.warning(
+                self.request,
+                "У вас нет прав для добавления уроков в этот курс."
+            )
+            return redirect('users:dashboard')
+
+        lesson.course = course
+        lesson.save()
+        messages.success(self.request, "Урок успешно создан.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        """
+        Перенаправляем на страницу курса после создания урока.
+        """
+        return reverse('users:course_edit_detail', kwargs={'pk': self.kwargs.get('course_id')})
+
+
+class LessonEditView(LoginRequiredMixin, UpdateView):
+    """
+    Представление для редактирования урока.
+    """
+    model = Lesson
+    template_name = 'users/lesson_edit.html'
+    fields = ['title', 'content', 'video_url', 'order']
+
+    def get_success_url(self):
+        """
+        Перенаправляем на страницу курса после редактирования урока.
+        """
+        return reverse_lazy('users:course_edit_detail', kwargs={'pk': self.object.course.id})
+
+
+class LessonDeleteView(LoginRequiredMixin, View):
+    """
+    Представление для удаления урока.
+    """
+
+    def post(self, request, *args, **kwargs):
+        lesson_id = kwargs.get('pk')
+        lesson = get_object_or_404(Lesson, id=lesson_id)
+
+        # Проверяем, является ли пользователь преподавателем курса
+        if lesson.course.teacher != request.user:
+            messages.warning(
+                request,
+                "У вас нет прав для удаления этого урока."
+            )
+            return redirect('users:dashboard')
+
+        # Удаляем урок
+        lesson.delete()
+        messages.success(request, "Урок успешно удален.")
+        return redirect('users:course_edit_detail', pk=lesson.course.id)

@@ -7,9 +7,12 @@ from users.models import Profile
 from payments.models import Payment
 from progress.models import Progress
 from django.contrib.auth.models import User
+from django.db.models import Avg, Value, FloatField
 from django.db.models import Count, Q
+from django.db.models.functions import Coalesce
 from django.db import models
 import markdown
+
 
 class CoursesView(ListView):
     model = Course
@@ -71,6 +74,14 @@ def load_courses(request):
         except ValueError:
             pass
 
+    # Аннотация данных
+    courses = courses.annotate(
+        students_count=Count('progresses'),
+        completed_students_count=Count('progresses', filter=models.Q(
+            progresses__completed_at__isnull=False)),
+        average_rating=Coalesce(Avg('reviews__rating'), Value(0), output_field=FloatField())
+    )
+
     # Сортировка
     if view == 'popular':
         courses = courses.annotate(students_count=Count(
@@ -81,15 +92,8 @@ def load_courses(request):
         courses = courses.order_by('price')
     elif sort == 'price_desc':
         courses = courses.order_by('-price')
-    # elif sort == 'rating':
-    #     courses = courses.order_by('-rating')
-
-    # Аннотация данных
-    courses = courses.annotate(
-        students_count=Count('progresses'),
-        completed_students_count=Count('progresses', filter=models.Q(
-            progresses__completed_at__isnull=False))
-    )
+    elif sort == 'rating':
+        courses = courses.order_by('-average_rating')
 
     # Пагинация
     paginator = Paginator(courses, 6)
@@ -111,7 +115,7 @@ def load_courses(request):
                 'students_count': course.students_count,
                 'completed_students_count': course.completed_students_count,
                 'lessons_count': course.lessons.count(),
-                # 'rating': course.rating,
+                'average_rating': course.average_rating or 0,
             }
             for course in page.object_list
         ],
@@ -134,14 +138,36 @@ class CourseDetailView(DetailView):
             html_content = markdown.markdown(course.full_description)
         else:
             html_content = None  # Если Markdown-текста нет
-            
+
+        # Количество студентов, изучающих курс
         students_count = Progress.objects.filter(course=course).count()
 
-        context['title'] = f'Learnify | {course.title}'
-        context['categorys'] = Category.objects.all()
-        context['lessons'] = course.lessons.all()
-        context['lessons_count'] = course.lessons.count()
-        context['html_content'] = html_content
-        context['students_count'] = students_count
-        return context
+        # Получение всех отзывов для данного курса
+        reviews = course.reviews.all()  # Используем related_name='reviews'
 
+        # Количество отзывов
+        reviews_count = reviews.count()
+
+        # Общий средний рейтинг курса
+        average_rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
+
+        # Разделите отзывы на основные и дополнительные
+        primary_reviews = reviews[:1]  # Первый отзыв
+        additional_reviews = reviews[1:]  # Остальные отзывы
+
+        # Добавление данных в контекст
+        context.update({
+            'title': f'Learnify | {course.title}',
+            'categorys': Category.objects.all(),
+            'lessons': course.lessons.all(),
+            'lessons_count': course.lessons.count(),
+            'html_content': html_content,
+            'students_count': students_count,
+            'primary_reviews': primary_reviews,
+            'additional_reviews': additional_reviews,
+            'reviews_count': reviews_count,  # Количество отзывов
+            # Средний рейтинг (округленный до одного знака после запятой)
+            'average_rating': round(average_rating, 1),
+        })
+
+        return context

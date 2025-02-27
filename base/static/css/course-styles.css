@@ -95,6 +95,12 @@ body {
   transition: background-color 0.3s;
 }
 
+.btn-danger {
+  margin-top: 20px;
+  background-color: var(--primary-color);
+  color: white;
+}
+
 .primary-btn {
   background-color: var(--primary-color);
   color: white;
@@ -143,13 +149,13 @@ h3 {
 .lessons-list a {
   text-decoration: none;
   color: var(--text-color);
-  transform: all .3s;
+  transform: all 0.3s;
 }
 
 .lessons-list .completed a {
   text-decoration: none;
   color: var(--success-color);
-  transform: all .3s;
+  transform: all 0.3s;
 }
 
 .lessons-list a:hover {
@@ -289,6 +295,134 @@ h3 {
   color: white;
 }
 
+.image_box_edit img {
+  width: 300px;
+  height: auto;
+}
+
+.course-reviews {
+  background-color: var(--card-background);
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.course-reviews h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.review-form {
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.star-rating {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.star-rating input {
+  display: none;
+}
+
+.star-rating label {
+  color: #ddd;
+  font-size: 1.5rem;
+  padding: 0;
+  cursor: pointer;
+}
+
+.star-rating label:before {
+  content: '\2605';
+}
+
+.star-rating input:checked ~ label {
+  color: #ffc700;
+}
+
+textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.25rem;
+}
+
+.primary-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.primary-btn:hover {
+  background-color: var(--secondary-color);
+}
+
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.review {
+  background-color: var(--background-color);
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.review-avatar {
+  width: 40px;
+  height: 40px;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+}
+
+.review-avatar img {
+  height: 40px;
+  width: 40px;
+  border-radius: 500px;
+}
+
+.review-info h3 {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.review-rating {
+  color: #ffc700;
+}
+
+.review-date {
+  margin-left: auto;
+  color: var(--text-light);
+  font-size: 0.875rem;
+}
+
+.review-comment {
+  margin-top: 0.5rem;
+}
+
 @media (max-width: 1200px) {
   .main-content {
     margin-left: 80px;
@@ -344,5 +478,18 @@ h3 {
 
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+  }
+
+  .course-meta {
+    flex-direction: column;
   }
 }

@@ -1,0 +1,125 @@
+.course-edit-form {
+    background-color: var(--card-background);
+    padding: 2rem;
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  
+  .form-group input[type="text"],
+  .form-group input[type="number"],
+  .form-group input[type="url"],
+  .form-group textarea,
+  .form-group select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.25rem;
+    font-size: 1rem;
+  }
+  
+  .form-group textarea {
+    resize: vertical;
+  }
+  
+  .form-group input[type="file"] {
+    border: none;
+    padding: 1rem 0;
+  }
+  
+  .lessons-edit {
+    background-color: var(--card-background);
+    padding: 2rem;
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .lessons-edit a {
+    text-decoration: none;
+  }
+  
+  .lessons-list {
+    list-style-type: none;
+    margin-bottom: 1.5rem;
+  }
+  
+  .lesson {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .lesson:last-child {
+    border-bottom: none;
+  }
+  
+  .lesson-number {
+    font-weight: bold;
+    margin-right: 1rem;
+  }
+  
+  .lesson-title {
+    flex-grow: 1;
+  }
+
+  .lesson {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .lesson-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .lesson-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lesson-actions .btn-danger {
+    margin-top: 0;
+  }
+  
+  .btn-danger {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .btn-danger:hover {
+    background-color: #c82333;
+  }
+  
+  @media (max-width: 767px) {
+    .course-edit-form,
+    .lessons-edit {
+      padding: 1rem;
+    }
+  
+    .lesson {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  
+    .lesson-actions {
+      margin-top: 0.5rem;
+    }
+  }
+  
+  

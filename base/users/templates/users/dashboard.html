@@ -37,71 +37,129 @@
     <div class="content-area">
       <section class="welcome-section">
         <h1>Добро пожаловать, {{ user_profile.user.first_name|default:user_profile.user.username }}!</h1>
-        <p>Продолжайте обучение и достигайте новых высот.</p>
+        {% if user_profile.role == 'student' %}
+          <p>Продолжайте обучение и достигайте новых высот.</p>
+        {% elif user_profile.role == 'teacher' %}
+          <p>Продолжайте создавать и улучшать ваши курсы.</p>
+        {% endif %}
       </section>
-      <section class="dashboard-stats">
-        <div class="stat-card">
-          <i class="fas fa-book-open"></i>
-          <div class="stat-info">
-            <h3>{{ active_courses_count }}</h3>
-            <p>Активных курсов</p>
+      {% if user_profile.role == 'student' %}
+        <section class="dashboard-stats">
+          <div class="stat-card">
+            <i class="fas fa-book-open"></i>
+            <div class="stat-info">
+              <h3>{{ active_courses_count }}</h3>
+              <p>Активных курсов</p>
+            </div>
           </div>
-        </div>
-        <div class="stat-card">
-          <i class="fas fa-certificate"></i>
-          <div class="stat-info">
-            <h3>{{ completed_courses_count }}</h3>
-            <p>Завершенных курса</p>
+          <div class="stat-card">
+            <i class="fas fa-certificate"></i>
+            <div class="stat-info">
+              <h3>{{ completed_courses_count }}</h3>
+              <p>Завершенных курса</p>
+            </div>
           </div>
-        </div>
-        <div class="stat-card">
-          <i class="fas fa-clock"></i>
-          <div class="stat-info">
-            <h3>{{ total_training_time }}ч</h3>
-            <p>Времени обучения</p>
+          <div class="stat-card">
+            <i class="fas fa-clock"></i>
+            <div class="stat-info">
+              <h3>{{ total_training_time }}ч</h3>
+              <p>Времени обучения</p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      {% elif user_profile.role == 'teacher' %}
+        <section class="dashboard-stats">
+          <div class="stat-card">
+            <i class="fas fa-book-open"></i>
+            <div class="stat-info">
+              <h3>{{ active_courses_count }}</h3>
+              <p>Активных курсов</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <i class="fas fa-users"></i>
+            <div class="stat-info">
+              <h3>{{ total_students_count }}</h3>
+              <p>Студентов</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <i class="fas fa-clock"></i>
+            <div class="stat-info">
+              <h3>{{ total_duration }} ч</h3>
+              <p>Общая длительность</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="add-course-section">
+          <a href="{% url 'users:course_create' %}"><button class="btn primary-btn add-course-btn"><i class="fas fa-plus"></i> Добавить курс</button></a>
+        </section>
+      {% endif %}
       <section class="courses-section">
         <h2>Мои курсы</h2>
         <div class="courses-grid">
           {% if courses_info %}
             {% for course in courses_info %}
-              <div class="course-card">
-                {% if course.image %}
-                  <div class="course-image" style="background-image: url('{{ course.image.url }}');"></div>
-                {% else %}
-                  <p>Изображение отсутствует</p>
-                {% endif %}
-                <div class="course-content">
-                  <h3>{{ course.title }}</h3>
-                  <div class="course-meta">
-                    <span><i class="fas fa-clock"></i> {{ course.total_lessons_count |ru_pluralize:"час,часа,часов" }} </span>
-                    <span><i class="fas fa-user"></i> {{ course.teacher }}</span>
-                  </div>
-                  <div class="course-progress">
-                    <div class="progress-bar">
-                      <div class="progress-fill" style="width: {{ course.progress.progress_percentage }}%;"></div>
+              {% if user_profile.role == 'student' %}
+                <div class="course-card">
+                  {% if course.image %}
+                    <div class="course-image" style="background-image: url('{{ course.image.url }}');"></div>
+                  {% else %}
+                    <p>Изображение отсутствует</p>
+                  {% endif %}
+                  <div class="course-content">
+                    <h3>{{ course.title }}</h3>
+                    <div class="course-meta">
+                      <span><i class="fas fa-clock"></i> {{ course.total_lessons_count|ru_pluralize:'час,часа,часов' }}</span>
+                      <span><i class="fas fa-user"></i> {{ course.teacher }}</span>
                     </div>
-                    <span class="progress-text">{{ course.progress.progress_percentage }}% завершено</span>
+                    <div class="course-progress">
+                      <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ course.progress.progress_percentage }}%;"></div>
+                      </div>
+                      <span class="progress-text">{{ course.progress.progress_percentage }}% завершено</span>
+                    </div>
+                    <a href="{% url 'users:course_detail' pk=course.id %}"><button class="btn primary-btn">Продолжить</button></a>
                   </div>
-                  <a href="{% url 'users:course_detail' pk=course.id %}"><button class="btn primary-btn">Продолжить</button></a>
                 </div>
-              </div>
+              {% elif user_profile.role == 'teacher' %}
+                <div class="course-card">
+                  {% if course.image %}
+                    <div class="course-image" style="background-image: url('{{ course.image.url }}');"></div>
+                  {% else %}
+                    <p>Изображение отсутствует</p>
+                  {% endif %}
+                  <div class="course-content">
+                    <h3>{{ course.title }}</h3>
+                    <div class="btn_control">
+                      <a href="{% url 'users:course_edit_detail' pk=course.id %}"><button class="btn primary-btn">Редактировать</button></a>
+                      <form method="POST" action="{% url 'users:course_delete' pk=course.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn danger-btn" onclick="return confirm('Вы уверены, что хотите удалить этот курс?')">Удалить</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
             {% endfor %}
           {% endif %}
         </div>
       </section>
-      <section class="progress-section">
-        <h2>Прогресс обучения</h2>
-        <div class="progress-chart">
-          <canvas id="progressChart" width="400" height="200"></canvas>
-        </div>
-      </section>
+      {% if user_profile.role == 'student' %}
+        <section class="progress-section">
+          <h2>Прогресс обучения</h2>
+          <div class="progress-chart">
+            <canvas id="progressChart" width="400" height="200"></canvas>
+          </div>
+        </section>
+      {% endif %}
     </div>
   </main>
   <div id="chartData" style="display: none;">{{ courses_info_json|safe }}</div>
   <script src="{% static './js/dashboard.js' %}"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="{% static 'js/chart.js' %}"></script>
+  {% if user_profile.role == 'student' %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'js/chart.js' %}"></script>
+  {% endif %}
 {% endblock %}

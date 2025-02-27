@@ -46,7 +46,17 @@ body {
 }
 
 .feedback {
-  width: 180px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap:10px;
+  width: 200px;
+}
+
+.review_box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .start__learning {

@@ -23,8 +23,7 @@ async function loadCourses() {
     const searchQuery = searchInput.value
 
     const response = await fetch(
-      //   `/courses/load-courses/?page=${currentPage}${categoryParam}&level=${level}&price=${price}&teacher=${teacher}&view=${view}&sort=${sort}&search=${encodeURIComponent(searchQuery)}`,
-      `/courses/load-courses/?page=${currentPage}${categoryParam}&level=${level}&price=${price}&teacher=${teacher}&view=${view}&search=${encodeURIComponent(
+      `/courses/load-courses/?page=${currentPage}${categoryParam}&level=${level}&price=${price}&teacher=${teacher}&view=${view}&sort=${sort}&search=${encodeURIComponent(
         searchQuery
       )}`
     )
@@ -109,7 +108,7 @@ function createCourseCard(course) {
           <div class="courses__card__content__price">${course.price} ₽</div>
           <div class="courses__card__content__rating">
             <img src="/static/images/rating.svg" alt="rating">
-            <div>4.5</div>
+            <div>${course.average_rating}</div>
           </div>
         </div>
         <div class="courses__card__content__studies__info">

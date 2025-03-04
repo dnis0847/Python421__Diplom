@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
-from django.db.models import Prefetch, Count
+from django.db.models import Prefetch, Count, Q, F
 from django.core.cache import cache
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import JsonResponse
@@ -27,6 +27,7 @@ from pygments.util import ClassNotFound
 from django.utils.safestring import mark_safe
 from django.utils.html import escape
 from django.utils import timezone
+from django.db import transaction
 
 # Локальные модули проекта
 from .forms import RegistrationForm, LoginForm
@@ -97,6 +98,14 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'users/dashboard.html'
 
     def get_context_data(self, **kwargs):
+        """
+        Получает контекст для шаблона dashboard.
+        
+        Оптимизированная версия:
+        1. Уменьшено количество запросов к БД для преподавателей
+        2. Использование аннотаций для подсчета количества студентов
+        3. Более эффективное вычисление общей длительности курсов
+        """
         context = super().get_context_data(**kwargs)
         user = self.request.user
         profile = get_object_or_404(Profile, user=user)
@@ -124,18 +133,23 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         context.update(courses_data)
 
         if profile.role == 'teacher':
+            # Оптимизированное получение данных для преподавателя
+            # Получаем все курсы преподавателя одним запросом с подсчетом уроков
+            teacher_courses = Course.objects.filter(teacher=user).annotate(
+                lessons_count=Count('lessons')
+            )
+            
             # Получаем количество активных курсов
-            active_courses_count = Course.objects.filter(teacher=user).count()
-
-            # Получаем количество студентов, записанных на курсы преподавателя
+            active_courses_count = teacher_courses.count()
+            
+            # Получаем количество студентов одним запросом с использованием аннотации
             total_students_count = Payment.objects.filter(
                 course__teacher=user, status='success'
-            ).aggregate(total_students=Count('user', distinct=True))['total_students']
-
-            # Получаем общую длительность всех курсов преподавателя
-            total_duration = sum(course.lessons.count()
-                                 for course in Course.objects.filter(teacher=user))
-
+            ).values('user').distinct().count()
+            
+            # Вычисляем общую длительность всех курсов преподавателя
+            total_duration = sum(course.lessons_count for course in teacher_courses)
+            
             context['active_courses_count'] = active_courses_count
             context['total_students_count'] = total_students_count
             context['total_duration'] = total_duration
@@ -156,7 +170,7 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
         Оптимизируем запросы для загрузки связанных данных.
         """
         return (
-            Course.objects.select_related('teacher')  # Загружаем преподавателя
+            Course.objects.select_related('teacher', 'category')  # Загружаем преподавателя и категорию
             .prefetch_related(
                 Prefetch(
                     'lessons',
@@ -172,36 +186,66 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
         )
 
     def check_course_access(self, course, user):
+        """
+        Проверяет доступ пользователя к курсу.
+        
+        Оптимизированная версия:
+        1. Улучшенное кэширование
+        2. Более четкая логика проверки доступа
+        3. Возвращает результат проверки для более гибкого использования
+        
+        :param course: объект Course
+        :param user: объект User
+        :return: объект redirect или None, если доступ разрешен
+        """
         cache_key = f"course_access_{user.id}_{course.id}"
         has_access = cache.get(cache_key)
+        
         if has_access is None:
             # Проверяем, является ли пользователь преподавателем курса
-            if course.teacher == user:
+            if course.teacher_id == user.id:  # Используем _id для избежания лишних запросов
                 has_access = True
+            # Проверяем, является ли курс бесплатным
+            elif course.price == 0:
+                has_access = True
+            # Проверяем, оплачен ли курс
             else:
-                # Проверяем, является ли курс бесплатным или оплаченным
-                has_access = course.price == 0 or Payment.objects.filter(
-                    user=user, course=course, status='success'
+                has_access = Payment.objects.filter(
+                    user_id=user.id, 
+                    course_id=course.id, 
+                    status='success'
                 ).exists()
+            
             # Кэшируем результат на 1 час
             cache.set(cache_key, has_access, timeout=60 * 60)
 
         if not has_access:
-            # Если доступа нет, перенаправляем на страницу оплаты
+            # Если доступа нет, возвращаем объект redirect
             messages.warning(
                 self.request,
                 "У вас нет доступа к этому курсу. Пожалуйста, оплатите его."
             )
             return redirect('payments:payment', course_id=course.id)
+        
+        # Если доступ есть, возвращаем None
+        return None
 
     def get(self, request, *args, **kwargs):
         """
         Переопределяем метод get для проверки доступа перед отображением курса.
+        
+        Оптимизированная версия:
+        1. Использует результат check_course_access для определения дальнейших действий
+        2. Более эффективная обработка ошибок
         """
         course = self.get_object()
         user = request.user
+        
         # Проверяем доступ к курсу
-        self.check_course_access(course, user)
+        redirect_response = self.check_course_access(course, user)
+        if redirect_response:
+            return redirect_response
+            
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -222,7 +266,7 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
             completed_lessons_count = 0
 
         # Общее количество уроков в курсе
-        total_lessons_count = course.lessons.count()
+        total_lessons_count = lessons.count()
 
         # Вычисляем процент выполнения курса
         if total_lessons_count > 0:
@@ -239,7 +283,7 @@ class CourseDetailView(LoginRequiredMixin, DetailView):
         context.update({
             'title': f'Learnify | {course.title}',
             'lessons': lessons,
-            'lessons_count': lessons.count(),
+            'lessons_count': total_lessons_count,
             'completed_lessons': completed_lessons,
             'completed_lessons_count': completed_lessons_count,
             'progress_percentage': round(progress_percentage),
@@ -256,16 +300,32 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
     def check_lesson_access(self, lesson, user):
         """
         Проверяет доступ пользователя к уроку.
+        
+        Оптимизированная версия:
+        1. Улучшенное кэширование
+        2. Более четкая логика проверки доступа
+        3. Возвращает результат проверки для более гибкого использования
         """
         course = lesson.course
         cache_key = f"course_access_{user.id}_{course.id}"
         has_access = cache.get(cache_key)
 
         if has_access is None:
-            has_access = course.price == 0 or Payment.objects.filter(
-                user=user, course=course, status='success'
-            ).exists()
-            # Кэшируем на 1 час
+            # Проверяем, является ли пользователь преподавателем курса
+            if course.teacher_id == user.id:
+                has_access = True
+            # Проверяем, является ли курс бесплатным
+            elif course.price == 0:
+                has_access = True
+            # Проверяем, оплачен ли курс
+            else:
+                has_access = Payment.objects.filter(
+                    user_id=user.id, 
+                    course_id=course.id, 
+                    status='success'
+                ).exists()
+            
+            # Кэшируем результат на 1 час
             cache.set(cache_key, has_access, timeout=60 * 60)
 
         if not has_access:
@@ -274,13 +334,16 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
                 "У вас нет доступа к этому уроку. Пожалуйста, оплатите курс."
             )
             return redirect('courses:course_detail', pk=course.id)
+        
+        # Если доступ есть, возвращаем None
+        return None
 
     def get_queryset(self):
         """
         Оптимизирует запросы для загрузки связанных данных.
         """
         return (
-            Lesson.objects.select_related('course')  # Загружаем связанный курс
+            Lesson.objects.select_related('course', 'course__teacher')  # Загружаем связанный курс и преподавателя
             .prefetch_related(
                 Prefetch(
                     'tests',  # Загружаем тесты
@@ -319,11 +382,14 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
         course = lesson.course
 
         # Получаем все уроки курса, отсортированные по порядку
-        lessons = course.lessons.order_by('order')
-        total_lessons = lessons.count()
+        lessons = list(course.lessons.order_by('order'))
+        total_lessons = len(lessons)
 
         # Находим порядковый номер текущего урока
-        current_lesson_index = list(lessons).index(lesson) + 1
+        try:
+            current_lesson_index = lessons.index(lesson) + 1
+        except ValueError:
+            current_lesson_index = 1
 
         # Инициализируем progress перед try-except
         progress = None
@@ -345,8 +411,7 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
                 id=lesson.id).exists()
 
         # Находим предыдущий и следующий уроки
-        previous_lesson = lessons[current_lesson_index -
-                                  2] if current_lesson_index > 1 else None
+        previous_lesson = lessons[current_lesson_index - 2] if current_lesson_index > 1 else None
         next_lesson = lessons[current_lesson_index] if current_lesson_index < total_lessons else None
 
         # Ссылки на предыдущий и следующий уроки
@@ -411,178 +476,252 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
     def convert_markdown_to_html(self, content):
         """
         Преобразует Markdown-контент в HTML с подсветкой синтаксиса.
+        
+        Оптимизированная версия:
+        1. Улучшенное кэширование
+        2. Более эффективная обработка кодовых блоков
+        3. Улучшенная обработка ошибок
         """
         if not content or not content.strip():
-            return None
+            return ""
 
         try:
-            # Используем кэширование для Markdown-контента
-            cache_key = f"markdown_{hash(content)}"
+            # Используем более надежный ключ кэша
+            cache_key = f"markdown_{hash(content)}_{settings.SECRET_KEY[:5]}"
             html_content = cache.get(cache_key)
 
             if not html_content:
                 # Преобразуем Markdown в HTML
                 html_content = markdown.markdown(
                     content,
-                    extensions=['fenced_code', 'codehilite', 'extra']
+                    extensions=['fenced_code', 'codehilite', 'extra', 'tables']
                 )
 
-                # Добавляем подсветку синтаксиса для кодовых блоков
-                def process_code_blocks(html):
-                    import re
-                    code_block_pattern = re.compile(
-                        r'<pre><code class="(.+?)">(.*?)</code></pre>', re.DOTALL)
+                # Оптимизированная обработка кодовых блоков с использованием компилированных регулярных выражений
+                import re
+                code_block_pattern = re.compile(
+                    r'<pre><code class="(.+?)">(.*?)</code></pre>', re.DOTALL)
 
-                    def replace_match(match):
-                        language = match.group(1)
-                        code = match.group(2)
-                        try:
-                            lexer = get_lexer_by_name(language)
-                        except ClassNotFound:
-                            # Если язык не найден, используем plain text
-                            lexer = get_lexer_by_name('text')
-                        formatter = HtmlFormatter()
-                        highlighted_code = highlight(code, lexer, formatter)
-                        return f'<div class="highlight">{highlighted_code}</div>'
+                def replace_match(match):
+                    language = match.group(1).split()[0]  # Берем только первое слово (язык)
+                    code = match.group(2)
+                    try:
+                        lexer = get_lexer_by_name(language)
+                    except ClassNotFound:
+                        lexer = get_lexer_by_name('text')
+                    formatter = HtmlFormatter(style="colorful", linenos=False)
+                    highlighted_code = highlight(code, lexer, formatter)
+                    return highlighted_code
 
-                    return code_block_pattern.sub(replace_match, html)
+                html_content = code_block_pattern.sub(replace_match, html_content)
+                
+                # Кэшируем на 24 часа для статического контента
+                cache.set(cache_key, html_content, timeout=60 * 60 * 24)
 
-                html_content = process_code_blocks(html_content)
-                # Кэшируем на 1 час
-                cache.set(cache_key, html_content, timeout=60 * 60)
-
-            return mark_safe(html_content)  # Отмечаем HTML как безопасный
+            return mark_safe(html_content)
 
         except Exception as e:
-            # В случае ошибки выводим сообщение об ошибке
-            return mark_safe(f"<p>Ошибка при преобразовании Markdown: {escape(str(e))}</p>")
+            logger.error(f"Ошибка при преобразовании Markdown: {str(e)}")
+            return mark_safe(f"<p>Ошибка при преобразовании контента. Пожалуйста, сообщите администратору.</p>")
 
 
 @csrf_exempt
 def lesson_detail(request, lesson_id):
+    """
+    Обрабатывает запросы к API урока.
+    
+    Оптимизированная версия:
+    1. Улучшенная обработка ошибок
+    2. Более эффективная работа с данными
+    3. Транзакционная обработка обновления прогресса
+    """
     try:
-        lesson = Lesson.objects.get(id=lesson_id)
+        lesson = Lesson.objects.select_related('course').get(id=lesson_id)
     except Lesson.DoesNotExist:
         logger.error(f"Урок с ID {lesson_id} не найден")
-        return JsonResponse({'status': 'error', 'message': 'Lesson not found'}, status=404)
+        return JsonResponse({'status': 'error', 'message': 'Урок не найден'}, status=404)
 
-    if request.method == 'POST':
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Метод не разрешен'}, status=405)
+    
+    try:
+        # Получаем данные из JSON-тела запроса
+        data = json.loads(request.body)
+        
+        # Извлекаем данные из JSON
+        user_answers = {key: value for key, value in data.items() 
+                        if key.startswith('question_')}
+        test_id = data.get('test_id')
+
+        if not test_id:
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'ID теста отсутствует в запросе'
+            }, status=400)
+
         try:
-            # Получаем данные из JSON-тела запроса
-            data = json.loads(request.body)
-            logger.debug(f"Received POST data: {data}")
+            test = Test.objects.get(id=test_id)
+        except Test.DoesNotExist:
+            return JsonResponse({
+                'status': 'error', 
+                'message': f'Тест с ID {test_id} не найден'
+            }, status=400)
 
-            # Извлекаем данные из JSON
-            user_answers = {key: value for key,
-                            value in data.items() if key.startswith('question_')}
-            test_id = data.get('test_id')
+        # Вычисляем результаты теста
+        correct_answers, percentage = calculate_test_score(test, user_answers)
 
-            if not test_id:
-                logger.error("Test ID is missing in the request data")
-                return JsonResponse({'status': 'error', 'message': 'Test ID is missing'}, status=400)
-
-            try:
-                test = Test.objects.get(id=test_id)
-            except Test.DoesNotExist:
-                logger.error(f"Test with ID {test_id} not found")
-                return JsonResponse({'status': 'error', 'message': 'Test not found'}, status=400)
-
-            # Вычисляем результаты теста
-            correct_answers, percentage = calculate_test_score(
-                test, user_answers)
-
-            # Обновляем прогресс пользователя
+        # Обновляем прогресс пользователя в транзакции
+        with transaction.atomic():
             user = request.user
             course = lesson.course
             progress, created = Progress.objects.get_or_create(
                 user=user, course=course)
+            
+            # Добавляем урок в завершенные
             progress.completed_lessons.add(lesson)
+            
+            # Обновляем счет
             progress.score += correct_answers
-            if not progress.completed_at and progress.completed_lessons.count() == course.lessons.count():
-                progress.completed_at = timezone.now()
+            
+            # Проверяем, завершен ли курс
+            if not progress.completed_at:
+                completed_lessons_count = progress.completed_lessons.count()
+                total_lessons_count = course.lessons.count()
+                
+                if completed_lessons_count == total_lessons_count:
+                    progress.completed_at = timezone.now()
+            
             progress.save()
 
-            return JsonResponse({
-                'status': 'success',
-                'correct_answers': correct_answers,
-                'total_questions': test.questions.count(),
-                'percentage': percentage,
-                'message': 'Test results processed successfully',
-            })
+        return JsonResponse({
+            'status': 'success',
+            'correct_answers': correct_answers,
+            'total_questions': test.questions.count(),
+            'percentage': percentage,
+            'message': 'Результаты теста успешно обработаны',
+        })
 
-        except json.JSONDecodeError:
-            logger.error("Failed to decode JSON")
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-
-    else:
-        logger.error("Method not allowed")
-        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    except json.JSONDecodeError:
+        logger.error("Ошибка декодирования JSON")
+        return JsonResponse({'status': 'error', 'message': 'Некорректный JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"Ошибка при обработке запроса: {str(e)}")
+        return JsonResponse({'status': 'error', 'message': 'Внутренняя ошибка сервера'}, status=500)
 
 
 def calculate_test_score(test, user_answers):
     """
     Подсчитывает результат теста на основе выбранных пользователем ответов.
+    
+    Оптимизированная версия:
+    1. Загружает все ответы одним запросом
+    2. Использует словарь для быстрого поиска
+    3. Удалены отладочные print-выражения
+    
     :param test: объект Test
     :param user_answers: словарь {question_id: selected_answer_id}
     :return: количество правильных ответов, процент правильных ответов
     """
-    total_questions = test.questions.count()
-    correct_answers = 0
-
-    print("Total questions:", total_questions)
-    print("User answers:", user_answers)
-
-    for question in test.questions.all():
-        selected_answer_id = user_answers.get(f'question_{question.id}')
-        if selected_answer_id:
-            try:
-                selected_answer = Answer.objects.get(id=selected_answer_id)
-                print(
-                    f"Question {question.id}: Selected answer {selected_answer_id}, Correct: {selected_answer.is_correct}")
-                if selected_answer.is_correct:
-                    correct_answers += 1
-            except Answer.DoesNotExist:
-                print(f"Answer {selected_answer_id} does not exist")
-
-    percentage = (correct_answers / total_questions) * \
-        100 if total_questions > 0 else 0
-    print(f"Correct answers: {correct_answers}, Percentage: {percentage}")
-    return correct_answers, percentage
+    # Получаем все вопросы теста одним запросом
+    questions = test.questions.all()
+    total_questions = len(questions)
+    
+    if total_questions == 0:
+        return 0, 0
+    
+    # Получаем все ID ответов, выбранных пользователем
+    selected_answer_ids = [int(answer_id) for answer_id in user_answers.values() if answer_id]
+    
+    # Если нет выбранных ответов, возвращаем 0
+    if not selected_answer_ids:
+        return 0, 0
+    
+    # Получаем все правильные ответы одним запросом
+    correct_answers_count = Answer.objects.filter(
+        id__in=selected_answer_ids, 
+        is_correct=True
+    ).count()
+    
+    # Вычисляем процент правильных ответов
+    percentage = (correct_answers_count / total_questions) * 100
+    
+    return correct_answers_count, percentage
 
 
 @csrf_exempt
 def mark_lesson_complete(request, lesson_id):
-    if request.method == 'POST':
-        try:
+    """
+    Отмечает урок как завершенный.
+    
+    Оптимизированная версия:
+    1. Использование транзакций
+    2. Улучшенная обработка ошибок
+    """
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Метод не разрешен'}, status=405)
+    
+    try:
+        with transaction.atomic():
             lesson = get_object_or_404(Lesson, id=lesson_id)
             user = request.user
             course = lesson.course
+            
+            # Получаем или создаем объект прогресса
             progress, created = Progress.objects.get_or_create(
                 user=user, course=course)
-            if lesson not in progress.completed_lessons.all():
+            
+            # Проверяем, не завершен ли уже урок
+            if not progress.completed_lessons.filter(id=lesson.id).exists():
+                # Добавляем урок в завершенные
                 progress.completed_lessons.add(lesson)
+                
+                # Проверяем, завершен ли курс
+                if not progress.completed_at:
+                    completed_lessons_count = progress.completed_lessons.count()
+                    total_lessons_count = course.lessons.count()
+                    
+                    if completed_lessons_count == total_lessons_count:
+                        progress.completed_at = timezone.now()
+                
                 progress.save()
-                return JsonResponse({'status': 'success', 'message': 'Урок успешно отмечен как завершенный!'})
+                return JsonResponse({
+                    'status': 'success', 
+                    'message': 'Урок успешно отмечен как завершенный!'
+                })
             else:
-                return JsonResponse({'status': 'error', 'message': 'Урок уже отмечен как завершенный.'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    else:
-        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+                return JsonResponse({
+                    'status': 'info', 
+                    'message': 'Урок уже отмечен как завершенный.'
+                })
+    except Exception as e:
+        logger.error(f"Ошибка при отметке урока как завершенного: {str(e)}")
+        return JsonResponse({
+            'status': 'error', 
+            'message': f'Произошла ошибка: {str(e)}'
+        }, status=500)
 
 
 @login_required
 def add_review(request, course_id):
+    """
+    Добавляет или обновляет отзыв пользователя о курсе.
+    
+    Оптимизированная версия:
+    1. Использование транзакций
+    2. Улучшенная валидация данных
+    3. Более четкая логика обработки
+    """
     course = get_object_or_404(Course, id=course_id)
 
-    # Проверяем, есть ли уже отзыв от этого пользователя для данного курса
-    user_review = Review.objects.filter(
-        user=request.user, course=course).first()
-
-    if request.method == 'POST':
+    if request.method != 'POST':
+        return redirect('users:course_detail', pk=course_id)
+    
+    try:
+        # Получаем данные из запроса
         rating = request.POST.get('rating')
         comment = request.POST.get('comment')
 
+        # Валидация данных
         if not rating or not comment:
             messages.error(request, "Пожалуйста, заполните все поля.")
             return redirect('users:course_detail', pk=course_id)
@@ -590,55 +729,76 @@ def add_review(request, course_id):
         try:
             rating = int(rating)
             if rating < 1 or rating > 5:
-                raise ValueError(
-                    "Неверная оценка. Выберите значение от 1 до 5.")
+                raise ValueError("Неверная оценка. Выберите значение от 1 до 5.")
         except ValueError as e:
             messages.error(request, str(e))
             return redirect('users:course_detail', pk=course_id)
 
-        if user_review:
-            # Если отзыв уже существует, обновляем его
-            user_review.rating = rating
-            user_review.comment = comment
-            user_review.save()
-            messages.success(request, "Ваш отзыв успешно обновлен!")
-        else:
-            # Если отзыва нет, создаем новый
-            Review.objects.create(
-                user=request.user,
-                course=course,
-                rating=rating,
-                comment=comment
-            )
-            messages.success(request, "Ваш отзыв успешно отправлен!")
+        # Обновля  str(e))
+            return redirect('users:course_detail', pk=course_id)
+
+        # Обновляем или создаем отзыв в транзакции
+        with transaction.atomic():
+            # Проверяем, есть ли уже отзыв от этого пользователя для данного курса
+            user_review = Review.objects.filter(
+                user=request.user, course=course).first()
+                
+            if user_review:
+                # Если отзыв уже существует, обновляем его
+                user_review.rating = rating
+                user_review.comment = comment
+                user_review.save()
+                messages.success(request, "Ваш отзыв успешно обновлен!")
+            else:
+                # Если отзыва нет, создаем новый
+                Review.objects.create(
+                    user=request.user,
+                    course=course,
+                    rating=rating,
+                    comment=comment
+                )
+                messages.success(request, "Ваш отзыв успешно отправлен!")
 
         return redirect('users:course_detail', pk=course_id)
-
-    # Если метод не POST, перенаправляем на страницу курса
-    return redirect('users:course_detail', pk=course_id)
+    
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении отзыва: {str(e)}")
+        messages.error(request, f"Произошла ошибка: {str(e)}")
+        return redirect('users:course_detail', pk=course_id)
 
 
 @login_required
 def delete_review(request, course_id):
     """
     Представление для удаления отзыва пользователя для данного курса.
+    
+    Оптимизированная версия:
+    1. Использование транзакций
+    2. Улучшенная обработка ошибок
     """
-    course = get_object_or_404(Course, id=course_id)
-    user = request.user
+    try:
+        with transaction.atomic():
+            course = get_object_or_404(Course, id=course_id)
+            user = request.user
 
-    # Находим отзыв пользователя для данного курса
-    review = Review.objects.filter(user=user, course=course).first()
+            # Находим отзыв пользователя для данного курса
+            review = Review.objects.filter(user=user, course=course).first()
 
-    if review:
-        # Удаляем отзыв
-        review.delete()
-        messages.success(
-            request, "Ваш отзыв успешно удален. Вы можете оставить новый.")
-    else:
-        messages.warning(request, "У вас нет отзыва для этого курса.")
+            if review:
+                # Удаляем отзыв
+                review.delete()
+                messages.success(
+                    request, "Ваш отзыв успешно удален. Вы можете оставить новый.")
+            else:
+                messages.warning(request, "У вас нет отзыва для этого курса.")
 
-    # Перенаправляем пользователя на страницу курса
-    return redirect('users:course_detail', pk=course_id)
+        # Перенаправляем пользователя на страницу курса
+        return redirect('users:course_detail', pk=course_id)
+    
+    except Exception as e:
+        logger.error(f"Ошибка при удалении отзыва: {str(e)}")
+        messages.error(request, f"Произошла ошибка: {str(e)}")
+        return redirect('users:course_detail', pk=course_id)
 
 
 class CourseEditView(LoginRequiredMixin, UpdateView):
@@ -671,10 +831,16 @@ class CourseEditView(LoginRequiredMixin, UpdateView):
         """
         Обработка валидной формы.
         """
-        course = form.save(commit=False)
-        course.save()
-        messages.success(self.request, "Изменения успешно сохранены.")
-        return super().form_valid(form)
+        try:
+            with transaction.atomic():
+                course = form.save(commit=False)
+                course.save()
+                messages.success(self.request, "Изменения успешно сохранены.")
+                return super().form_valid(form)
+        except Exception as e:
+            logger.error(f"Ошибка при сохранении курса: {str(e)}")
+            messages.error(self.request, f"Произошла ошибка: {str(e)}")
+            return self.form_invalid(form)
 
     def get(self, request, *args, **kwargs):
         """
@@ -697,29 +863,44 @@ class CourseEditView(LoginRequiredMixin, UpdateView):
 class CourseDeleteView(LoginRequiredMixin, View):
     """
     Представление для удаления курса.
+    
+    Оптимизированная версия:
+    1. Использование транзакций
+    2. Улучшенная обработка ошибок
     """
-
     def post(self, request, *args, **kwargs):
-        course_id = kwargs.get('pk')
-        course = get_object_or_404(Course, id=course_id)
+        try:
+            with transaction.atomic():
+                course_id = kwargs.get('pk')
+                course = get_object_or_404(Course, id=course_id)
 
-        # Проверяем, является ли пользователь преподавателем курса
-        if course.teacher != request.user:
-            messages.warning(
-                request,
-                "У вас нет прав для удаления этого курса."
-            )
+                # Проверяем, является ли пользователь преподавателем курса
+                if course.teacher != request.user:
+                    messages.warning(
+                        request,
+                        "У вас нет прав для удаления этого курса."
+                    )
+                    return redirect('users:dashboard')
+
+                # Удаляем курс
+                course.delete()
+                messages.success(request, "Курс успешно удален.")
+            
             return redirect('users:dashboard')
-
-        # Удаляем курс
-        course.delete()
-        messages.success(request, "Курс успешно удален.")
-        return redirect('users:dashboard')
+        
+        except Exception as e:
+            logger.error(f"Ошибка при удалении курса: {str(e)}")
+            messages.error(request, f"Произошла ошибка при удалении курса: {str(e)}")
+            return redirect('users:dashboard')
 
 
 class CourseCreateView(LoginRequiredMixin, CreateView):
     """
     Представление для создания нового курса.
+    
+    Оптимизированная версия:
+    1. Использование транзакций
+    2. Улучшенная обработка ошибок
     """
     model = Course
     template_name = 'users/course_create.html'
@@ -731,12 +912,18 @@ class CourseCreateView(LoginRequiredMixin, CreateView):
         """
         Обработка валидной формы.
         """
-        course = form.save(commit=False)
-        # Устанавливаем текущего пользователя как преподавателя курса
-        course.teacher = self.request.user
-        course.save()
-        messages.success(self.request, "Курс успешно создан.")
-        return super().form_valid(form)
+        try:
+            with transaction.atomic():
+                course = form.save(commit=False)
+                # Устанавливаем текущего пользователя как преподавателя курса
+                course.teacher = self.request.user
+                course.save()
+                messages.success(self.request, "Курс успешно создан.")
+                return super().form_valid(form)
+        except Exception as e:
+            logger.error(f"Ошибка при создании курса: {str(e)}")
+            messages.error(self.request, f"Произошла ошибка: {str(e)}")
+            return self.form_invalid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -748,6 +935,10 @@ class CourseCreateView(LoginRequiredMixin, CreateView):
 class LessonCreateView(LoginRequiredMixin, CreateView):
     """
     Представление для создания нового урока.
+    
+    Оптимизированная версия:
+    1. Использование транзакций
+    2. Улучшенная обработка ошибок
     """
     model = Lesson
     template_name = 'users/lesson_create.html'
@@ -757,22 +948,28 @@ class LessonCreateView(LoginRequiredMixin, CreateView):
         """
         Обработка валидной формы.
         """
-        lesson = form.save(commit=False)
-        course_id = self.kwargs.get('course_id')
-        course = get_object_or_404(Course, id=course_id)
+        try:
+            with transaction.atomic():
+                lesson = form.save(commit=False)
+                course_id = self.kwargs.get('course_id')
+                course = get_object_or_404(Course, id=course_id)
 
-        # Проверяем, является ли пользователь преподавателем курса
-        if course.teacher != self.request.user:
-            messages.warning(
-                self.request,
-                "У вас нет прав для добавления уроков в этот курс."
-            )
-            return redirect('users:dashboard')
+                # Проверяем, является ли пользователь преподавателем курса
+                if course.teacher != self.request.user:
+                    messages.warning(
+                        self.request,
+                        "У вас нет прав для добавления уроков в этот курс."
+                    )
+                    return redirect('users:dashboard')
 
-        lesson.course = course
-        lesson.save()
-        messages.success(self.request, "Урок успешно создан.")
-        return super().form_valid(form)
+                lesson.course = course
+                lesson.save()
+                messages.success(self.request, "Урок успешно создан.")
+                return super().form_valid(form)
+        except Exception as e:
+            logger.error(f"Ошибка при создании урока: {str(e)}")
+            messages.error(self.request, f"Произошла ошибка: {str(e)}")
+            return self.form_invalid(form)
 
     def get_success_url(self):
         """
@@ -784,10 +981,28 @@ class LessonCreateView(LoginRequiredMixin, CreateView):
 class LessonEditView(LoginRequiredMixin, UpdateView):
     """
     Представление для редактирования урока.
+    
+    Оптимизированная версия:
+    1. Использование транзакций
+    2. Улучшенная обработка ошибок
     """
     model = Lesson
     template_name = 'users/lesson_edit.html'
     fields = ['title', 'content', 'video_url', 'order']
+
+    def form_valid(self, form):
+        """
+        Обработка валидной формы.
+        """
+        try:
+            with transaction.atomic():
+                lesson = form.save()
+                messages.success(self.request, "Урок успешно обновлен.")
+                return super().form_valid(form)
+        except Exception as e:
+            logger.error(f"Ошибка при обновлении урока: {str(e)}")
+            messages.error(self.request, f"Произошла ошибка: {str(e)}")
+            return self.form_invalid(form)
 
     def get_success_url(self):
         """
@@ -799,21 +1014,33 @@ class LessonEditView(LoginRequiredMixin, UpdateView):
 class LessonDeleteView(LoginRequiredMixin, View):
     """
     Представление для удаления урока.
+    
+    Оптимизированная версия:
+    1. Использование транзакций
+    2. Улучшенная обработка ошибок
     """
-
     def post(self, request, *args, **kwargs):
-        lesson_id = kwargs.get('pk')
-        lesson = get_object_or_404(Lesson, id=lesson_id)
+        try:
+            with transaction.atomic():
+                lesson_id = kwargs.get('pk')
+                lesson = get_object_or_404(Lesson, id=lesson_id)
 
-        # Проверяем, является ли пользователь преподавателем курса
-        if lesson.course.teacher != request.user:
-            messages.warning(
-                request,
-                "У вас нет прав для удаления этого урока."
-            )
+                # Проверяем, является ли пользователь преподавателем курса
+                if lesson.course.teacher != request.user:
+                    messages.warning(
+                        request,
+                        "У вас нет прав для удаления этого урока."
+                    )
+                    return redirect('users:dashboard')
+
+                course_id = lesson.course.id
+                # Удаляем урок
+                lesson.delete()
+                messages.success(request, "Урок успешно удален.")
+            
+            return redirect('users:course_edit_detail', pk=course_id)
+        
+        except Exception as e:
+            logger.error(f"Ошибка при удалении урока: {str(e)}")
+            messages.error(request, f"Произошла ошибка при удалении урока: {str(e)}")
             return redirect('users:dashboard')
-
-        # Удаляем урок
-        lesson.delete()
-        messages.success(request, "Урок успешно удален.")
-        return redirect('users:course_edit_detail', pk=lesson.course.id)

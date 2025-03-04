@@ -67,7 +67,7 @@
                   </div>
                   <div>
                     <img src="{% static 'images/peoples.svg' %}" alt="peoples" l />
-                    <span>{{ course.students_count|ru_pluralize:"студент,студента,студентов" }}</span>
+                    <span>{{ course.students_count|ru_pluralize:'студент,студента,студентов' }}</span>
                   </div>
                   <div>
                     <img src="{% static 'images/books.svg' %}" alt="books" />
@@ -96,12 +96,32 @@
           <div class="subscription__block">
             <form method="post">
               {% csrf_token %}
-              <input type="email" name="email" placeholder="Ваш email" />
+              <input type="email" name="email" placeholder="Ваш email" required />
+              <div class="filter-group">
+                <label for="category-select">Выберите категорию</label>
+                <select id="category-select" name="category">
+                  <option value="all" selected="">Все категории</option>
+                  {% for category in categorys %}
+                    <option value="{{ category.name }}">{{ category.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
               <button type="submit">
                 <span>Подписаться</span>
                 <img src="{% static 'images/white_arrow.svg' %}" alt="" />
               </button>
             </form>
+            {% if subscription_success %}
+              <div class="subscription-success-message">{{ subscription_success }}</div>
+            {% endif %}
+
+            {% if messages %}
+              <div class="messages">
+                {% for message in messages %}
+                  <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
           </div>
         </div>
         <div class="subscription__advantage">
@@ -149,4 +169,5 @@
 
   <script src="{% static 'js/answer.js' %}"></script>
   <script src="{% static 'js/mainPageBurgerMenu.js' %}"></script>
+  <script src="{% static 'js/mainMessages.js' %}"></script>
 {% endblock %}

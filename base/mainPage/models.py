@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 # Create your models here.
 
@@ -33,6 +34,8 @@ class JoinOurCommunity(models.Model):
         return self.title_block
 
 # Приемущества подписки
+
+
 class SubscriptionBenefit(models.Model):
     title_benefit = models.CharField(
         max_length=255, verbose_name="Заголовок преимущества")
@@ -70,3 +73,32 @@ class FAQ(models.Model):
 
     def __str__(self):
         return self.question
+
+
+class Subscriber(models.Model):
+    email = models.EmailField(unique=True, verbose_name="Email подписчика")
+    category = models.ForeignKey(
+        'courses.Category',  
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Предпочитаемая категория"
+    )
+    subscribed_at = models.DateTimeField(
+        default=timezone.now, verbose_name="Дата подписки")
+    is_active = models.BooleanField(
+        default=True, verbose_name="Активная подписка")
+    ip_address = models.GenericIPAddressField(
+        null=True, blank=True, verbose_name="IP адрес")
+    is_confirmed = models.BooleanField(
+        default=False, verbose_name="Подтверждена")
+    confirmation_token = models.CharField(
+        max_length=100, blank=True, null=True, verbose_name="Токен подтверждения")
+
+    class Meta:
+        verbose_name = "Подписчик"
+        verbose_name_plural = "Подписчики"
+        ordering = ['-subscribed_at']
+
+    def __str__(self):
+        return self.email

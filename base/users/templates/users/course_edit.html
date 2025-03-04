@@ -78,7 +78,7 @@
           <li class="lesson">
             <div class="lesson_title">
               <span class="lesson-number">{{ lesson.order }}.</span>
-              <a href="{% url 'users:lesson_detail' lesson.id %}">
+              <a href="{% url 'users:lesson_detail'  pk=lesson.pk %}">
                 <span class="lesson-title">{{ lesson.title }}</span>
               </a>
             </div>

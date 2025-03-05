@@ -8,7 +8,8 @@ from django.db.models import Avg, Value, FloatField
 from django.db.models import Count
 from django.db.models.functions import Coalesce
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
+from django.http import HttpResponseNotFound
 
 import uuid
 
@@ -134,3 +135,7 @@ class ContactsView(TemplateView):
 
         context['title'] = 'Learnify | Контакты'
         return context
+
+
+def custom_page_not_found(request, exception):
+    return render(request, '404.html', status=404)

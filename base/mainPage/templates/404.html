@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/404.css' %}" />
+    <title>Страница не найдена</title>
+  </head>
+  <body>
+    {% include './includes/header.html' %}
+
+    <main>
+      <div class="container page_404">
+        <div class="error-container">
+          <div class="error-code">404</div>
+          <h1 class="error-title">Ошибка: Страница не найдена</h1>
+          <p class="error-message">К сожалению, запрашиваемая страница не существует.</p>
+          <a href="{% url 'mainPage:home' %}" class="back-button">
+            <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>Вернуться на главную страницу
+          </a>
+        </div>
+      </div>
+    </main>
+
+    {% include './includes/footer.html' %}
+  </body>
+</html>

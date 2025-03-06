@@ -42,7 +42,7 @@ def load_courses(request):
 
     # Базовый запрос курсов
     courses = Course.objects.select_related(
-        'teacher', 'category').prefetch_related('lessons')
+        'teacher', 'category').prefetch_related('lessons').filter(is_published=True)
 
     # Поиск
     if search_query:

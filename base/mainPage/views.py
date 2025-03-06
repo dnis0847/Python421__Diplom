@@ -33,7 +33,7 @@ class IndexView(TemplateView):
             students_count=Count('progresses'),
             average_rating=Coalesce(
                 Avg('reviews__rating'), Value(0), output_field=FloatField())
-        ).order_by('-students_count')[:6]
+        ).filter(is_published=True).order_by('-students_count')[:6]
 
         for course in popular_courses:
             course.lessons_count = course.lessons.count()
@@ -43,7 +43,7 @@ class IndexView(TemplateView):
 
         context['popular_courses'] = popular_courses
 
-        # Добавляем сообщение об успешной подписке, если оно есть
+
         if 'subscription_success' in self.request.session:
             context['subscription_success'] = self.request.session.pop(
                 'subscription_success')

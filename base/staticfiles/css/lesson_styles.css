@@ -1,0 +1,353 @@
+:root {
+  --primary-color: #4f46e5;
+  --secondary-color: #818cf8;
+  --background-color: #f3f4f6;
+  --card-background: #ffffff;
+  --text-color: #1f2937;
+  --text-light: #6b7280;
+  --border-color: #e5e7eb;
+  --success-color: #10b981;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.6;
+  color: var(--text-color);
+  background-color: var(--background-color);
+}
+
+.main-content {
+  max-width: 100%;
+  margin: 0 auto;
+  margin-left: 280px;
+  padding: 2rem;
+}
+
+.lesson-header {
+  grid-column: 1 / -1;
+  background-color: var(--card-background);
+  padding: 2rem;
+  border-radius: 0.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.lesson-title {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.lesson-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.lesson-number {
+  font-size: 0.875rem;
+  color: var(--text-light);
+}
+
+.progress-bar {
+  flex-grow: 1;
+  height: 8px;
+  background-color: var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--success-color);
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.primary-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.primary-btn:hover {
+  background-color: var(--secondary-color);
+}
+
+.secondary-btn {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.succes-btn {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.secondary-btn:hover {
+  background-color: var(--primary-color);
+}
+
+.lesson-content,
+.lesson-quiz {
+  background-color: var(--card-background);
+  padding: 2rem;
+  border-radius: 0.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.video-container {
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-container iframe {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.lesson-video {
+  width: 1200px;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.text-content h2,
+.lesson-quiz h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.text-content h3 {
+  font-size: 1.25rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.text-content ul {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.text-content li {
+  margin-bottom: 0.5rem;
+}
+
+.quiz-question {
+  margin-bottom: 1.5rem;
+}
+
+.quiz-question p {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.quiz-question label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.lesson-navigation {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.lesson-info,
+.additional-materials {
+  background-color: var(--card-background);
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.lesson-info h3,
+.additional-materials h3 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.lesson-info ul,
+.additional-materials ul {
+  list-style-type: none;
+}
+
+.lesson-info li,
+.additional-materials li {
+  margin-bottom: 0.5rem;
+}
+
+.lesson-info i,
+.additional-materials i {
+  margin-right: 0.5rem;
+  color: var(--primary-color);
+}
+
+.text-content {
+  background-color: var(--card-background);
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.text-content h1 {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin-bottom: 1.5rem;
+}
+
+.text-content h2 {
+  font-size: 2rem;
+  color: var(--secondary-color);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.text-content h3 {
+  font-size: 1.75rem;
+  color: var(--text-color);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.text-content h4 {
+  font-size: 1.5rem;
+  color: var(--text-color);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.text-content h5 {
+  font-size: 1.25rem;
+  color: var(--text-color);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.text-content p {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.text-content strong {
+  font-weight: 600;
+}
+
+.text-content ul,
+.text-content ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.text-content li {
+  margin-bottom: 0.5rem;
+}
+
+.text-content a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.text-content a:hover {
+  color: var(--secondary-color);
+  text-decoration: underline;
+}
+
+.text-content hr {
+  border: 0;
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 2rem 0;
+}
+
+pre {
+  padding: 1.25rem;
+  background-color: var(--background-color);
+  border-radius: 0.5rem;
+  white-space: pre-wrap; /* Перенос строк с сохранением пробелов */
+  word-wrap: break-word; /* Перенос длинных слов */
+  overflow-x: auto; /* Добавление горизонтальной прокрутки, если текст все равно не помещается */
+  max-width: 100%; /* Ограничение ширины блока */
+}
+
+.text-content code {
+  background-color: var(--background-color);
+  border-radius: 0.25rem;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+@media (max-width: 768px) {
+  .text-content {
+    padding: 1.5rem;
+  }
+
+  .text-content h1 {
+    font-size: 2rem;
+  }
+
+  .text-content h2 {
+    font-size: 1.75rem;
+  }
+
+  .text-content h3 {
+    font-size: 1.5rem;
+  }
+
+  .text-content h4 {
+    font-size: 1.25rem;
+  }
+
+  .text-content h5 {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 1200px) {
+  .main-content {
+    margin-left: 80px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem;
+    margin-left: 0;
+  }
+
+  .lesson-header,
+  .lesson-content,
+  .lesson-quiz,
+  .lesson-navigation {
+    padding: 1.5rem;
+  }
+
+  .lesson-title {
+    font-size: 2rem;
+  }
+
+  .lesson-navigation {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

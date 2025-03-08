@@ -385,6 +385,11 @@ class LessonDetailView(LoginRequiredMixin, DetailView):
 
         # Получаем курс, к которому относится урок
         course = lesson.course
+        context['is_teacher'] = (
+            user.is_authenticated and 
+            course and 
+            course.teacher_id == user.id
+        )
 
         # Получаем все уроки курса, отсортированные по порядку
         lessons = list(course.lessons.order_by('order'))

@@ -79,11 +79,12 @@
         <a href="#"><button class="btn secondary-btn" disabled>Следующий урок <i class="fas fa-chevron-right"></i></button></a>
       {% endif %}
     </section>
-
-    {% if is_current_lesson_completed %}
-      <button id="mark-lesson-complete" class="btn succes-btn" data-lesson-id="{{ lesson.id }}"><i class="fas fa-check"></i> Урок завершен</button>
-    {% else %}
-      <button id="mark-lesson-complete" class="btn secondary-btn" data-lesson-id="{{ lesson.id }}"><i class="fas fa-check"></i> Отметить урок как завершенный</button>
+    {% if not is_teacher %}
+      {% if is_current_lesson_completed %}
+        <button id="mark-lesson-complete" class="btn succes-btn" data-lesson-id="{{ lesson.id }}"><i class="fas fa-check"></i> Урок завершен</button>
+      {% else %}
+        <button id="mark-lesson-complete" class="btn secondary-btn" data-lesson-id="{{ lesson.id }}"><i class="fas fa-check"></i> Отметить урок как завершенный</button>
+      {% endif %}
     {% endif %}
   </main>
   <script src="{% static 'js/dashboard.js' %}"></script>

@@ -8,20 +8,28 @@ class RegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True)
     first_name = forms.CharField(max_length=30, required=True)
     last_name = forms.CharField(max_length=30, required=True)
+    role = forms.ChoiceField(
+        choices=[('student', 'Студент'), ('teacher', 'Преподаватель')],
+        widget=forms.RadioSelect,
+        initial='student',
+        required=True,
+        label='Роль'
+    )
 
     class Meta:
         model = User
         fields = ['username', 'email', 'first_name',
-                  'last_name', 'password1', 'password2']
+                  'last_name', 'password1', 'password2', 'role']
 
 
 class LoginForm(AuthenticationForm):
     username = forms.CharField(
         label="Логин",
-        widget=forms.TextInput(attrs={'placeholder': 'Ваш супергеройский псевдоним'}),
+        widget=forms.TextInput(
+            attrs={'placeholder': 'Ваш супергеройский псевдоним'}),
     )
     password = forms.CharField(
         label="Пароль",
-        widget=forms.PasswordInput(attrs={'placeholder': 'Секретный код доступа'}),
+        widget=forms.PasswordInput(
+            attrs={'placeholder': 'Секретный код доступа'}),
     )
-    

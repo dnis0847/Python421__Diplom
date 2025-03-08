@@ -61,12 +61,17 @@ class RegisterView(FormView):
     def form_valid(self, form):
         try:
             user = form.save()
+            # Устанавливаем роль пользователя
+            user.profile.role = form.cleaned_data.get('role')
+            user.profile.save()
+            
             login(self.request, user)
             messages.success(self.request, 'Вы успешно зарегистрировались!')
             return super().form_valid(form)
         except Exception as e:
             messages.error(self.request, f'Ошибка регистрации: {str(e)}')
             return self.form_invalid(form)
+
 
 
 class UserLoginView(LoginView):

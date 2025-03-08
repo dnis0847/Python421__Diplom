@@ -6,3 +6,4 @@ psycopg2-binary==2.9.10
 Pygments==2.19.1
 python-decouple==3.8
 sqlparse==0.5.3
+

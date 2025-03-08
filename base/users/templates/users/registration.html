@@ -41,6 +41,27 @@
             <label for="id_password2">Подтверждение пароля:</label>
             <input type="password" name="password2" autocomplete="new-password" required id="id_password2" placeholder="Повторите свой шедевр" />
           </div>
+          
+          <div class="form-group role-selection">
+            <label>Выберите роль:</label>
+            <div class="role-options">
+              <div class="role-option">
+                <input type="radio" name="role" value="student" id="id_role_0" checked />
+                <label for="id_role_0">
+                  Студент
+                  <span class="role-description">Изучайте курсы и развивайте навыки</span>
+                </label>
+              </div>
+              <div class="role-option">
+                <input type="radio" name="role" value="teacher" id="id_role_1" />
+                <label for="id_role_1">
+                  Преподаватель
+                  <span class="role-description">Создавайте курсы и обучайте студентов</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          
           <button type="submit" class="btn register-btn">Стать легендой Learnify</button>
         </form>
         <p class="login-link">
@@ -50,3 +71,4 @@
     </div>
   </div>
 {% endblock %}
+
